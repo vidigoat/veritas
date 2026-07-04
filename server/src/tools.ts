@@ -169,6 +169,49 @@ export const TOOLS: Record<string, ToolSpec> = {
       return { vendor: v.name, checks, exonerated, verdict: exonerated ? "INNOCENT EXPLANATION FOUND — lean toward CLEAR unless other evidence is overwhelming" : "NO INNOCENT EXPLANATION FOUND — the fraud hypothesis survives the disconfirming search" };
     },
   },
+  employee_profile: {
+    readOnly: true,
+    describe: a => `Profiling employee ${a?.employee_id ?? "?"}`,
+    def: { type: "function", function: { name: "employee_profile", description: "Profile an employee: role, home address, join date, and every vendor whose invoices they approved (approval concentration is a shell-scheme red flag).", parameters: { type: "object", properties: { employee_id: { type: "string" } }, required: ["employee_id"] } } },
+    run(a, ctx) {
+      const p = z.object({ employee_id: z.string() }).safeParse(a);
+      if (!p.success) return errRes("employee_id required");
+      const e = rows(ctx, `SELECT employee_id, name, role, home_address, joined FROM employees WHERE employee_id=?`, p.data.employee_id)[0];
+      if (!e) return errRes(`employee ${p.data.employee_id} not found`);
+      const approvals = rows(ctx, `SELECT vendor_id, COUNT(*) n, ROUND(SUM(amount)) total FROM ledger WHERE approved_by=? AND vendor_id IS NOT NULL GROUP BY vendor_id ORDER BY total DESC`, p.data.employee_id);
+      return { employee: e, vendors_approved: approvals, sole_approver_of: approvals.filter((v: any) => rows(ctx, `SELECT COUNT(DISTINCT approved_by) n FROM ledger WHERE vendor_id=?`, v.vendor_id)[0]?.n === 1).map((v: any) => v.vendor_id) };
+    },
+  },
+  account_profile: {
+    readOnly: true,
+    describe: a => `Profiling account "${a?.account ?? "?"}"`,
+    def: { type: "function", function: { name: "account_profile", description: "Profile a ledger account: total spend, transaction count, top vendors, and month-over-month trend — to spot an account being used to hide inflated spend.", parameters: { type: "object", properties: { account: { type: "string" } }, required: ["account"] } } },
+    run(a, ctx) {
+      const p = z.object({ account: z.string() }).safeParse(a);
+      if (!p.success) return errRes("account required");
+      const total = rows(ctx, `SELECT COUNT(*) n, ROUND(SUM(amount)) total FROM ledger WHERE account=?`, p.data.account)[0];
+      const top = rows(ctx, `SELECT vendor_id, ROUND(SUM(amount)) total FROM ledger WHERE account=? AND vendor_id IS NOT NULL GROUP BY vendor_id ORDER BY total DESC LIMIT 5`, p.data.account);
+      return { account: p.data.account, ...total, top_vendors: top };
+    },
+  },
+  corroborate: {
+    readOnly: true,
+    describe: a => `Corroborating: ${(a?.claim ?? "").slice(0, 40)}`,
+    def: { type: "function", function: { name: "corroborate", description: "Count how many independent sources support a claim (ledger + documents). A claim confirmed by multiple independent sources is stronger evidence than one.", parameters: { type: "object", properties: { vendor_id: { type: "string" }, claim: { type: "string" } }, required: ["vendor_id"] } } },
+    run(a, ctx) {
+      const p = z.object({ vendor_id: z.string(), claim: z.string().optional() }).safeParse(a);
+      if (!p.success) return errRes("vendor_id required");
+      const vid = p.data.vendor_id;
+      const sources: string[] = [];
+      if (rows(ctx, `SELECT COUNT(*) n FROM ledger WHERE vendor_id=?`, vid)[0]?.n > 0) sources.push("general_ledger");
+      if (ctx.data.docs.has(`${vid}-REG`)) sources.push("vendor_registration");
+      const inv = [...ctx.data.docs.keys()].filter(k => k.startsWith(`${vid}-INV`));
+      if (inv.length) sources.push(`${inv.length} invoices`);
+      const bs = [...ctx.data.docs.keys()].filter(k => k.startsWith("BS-")).some(k => ctx.data.docs.get(k)?.includes(vid));
+      if (bs) sources.push("bank_statements");
+      return { independent_sources: sources, count: sources.length, strength: sources.length >= 3 ? "strong (corroborated by 3+ sources)" : sources.length === 2 ? "moderate" : "single-source" };
+    },
+  },
   trace_payments: {
     readOnly: true,
     describe: a => `Tracing payments to ${a?.vendor_id ?? "?"}`,
