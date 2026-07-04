@@ -1,0 +1,12 @@
+{
+  "name": "veritas",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The AI Forensic Auditor — RAISE Summit Hackathon 2026",
+  "scripts": {
+    "dev": "pnpm --parallel --filter server --filter web dev",
+    "test": "pnpm -r test",
+    "datagen": "pnpm --filter datagen generate",
+    "evals": "pnpm --filter evals run-all"
+  }
+}
