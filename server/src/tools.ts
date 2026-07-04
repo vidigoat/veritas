@@ -1,11 +1,12 @@
 /**
- * The 11 tools. Every failure returns an error RESULT (never throws to the
+ * The 15 tools. Every failure returns an error RESULT (never throws to the
  * loop) so the model self-repairs. Read-only tools are concurrency-safe.
  *
- *  SWEEP: run_sweep · vendor_profile        VERIFY: recompute
- *  DIG:   query_ledger · search_documents · CASE:  update_hypothesis ·
- *         get_document · cross_reference ·         file_finding ·
- *         trace_payments                           freeze_vendor
+ *  SWEEP:  run_sweep · vendor_profile · employee_profile · account_profile
+ *  DIG:    query_ledger · search_documents · get_document · cross_reference ·
+ *          trace_payments · exonerate · corroborate
+ *  VERIFY: recompute
+ *  CASE:   update_hypothesis · file_finding · freeze_vendor
  */
 import { z } from "zod";
 import type { CompanyData } from "./data.js";
