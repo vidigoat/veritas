@@ -1,0 +1,74 @@
+/**
+ * LLM layer — Vultr Serverless Inference, junior/senior routing.
+ *
+ *   route(tier) ──▶ model ──▶ chat(): retries(429/5xx) → failover(once, pre-output)
+ *                              └─ usage metering → spend guard ($150 hard kill)
+ *
+ * Bake-off (GO-0, in repo): Kimi-K2.6 4/4 = senior · Nemotron-Cascade-2 4/4
+ * fastest = junior (sweep, triage, judge). MiniMax-M2.7 = fallback senior.
+ */
+import { env } from "./env.js";
+import type { ModelTier } from "@veritas/shared";
+
+const BASE = "https://api.vultrinference.com/v1/chat/completions";
+export const MODELS: Record<ModelTier, string> = {
+  senior: "moonshotai/Kimi-K2.6",
+  junior: "nvidia/Nemotron-Cascade-2-30B-A3B",
+  judge: "nvidia/Nemotron-Cascade-2-30B-A3B",
+};
+const FALLBACK: Record<string, string> = {
+  "moonshotai/Kimi-K2.6": "MiniMaxAI/MiniMax-M2.7",
+  "nvidia/Nemotron-Cascade-2-30B-A3B": "moonshotai/Kimi-K2.6",
+};
+// $/1M tokens (from live catalog)
+const PRICE: Record<string, [number, number]> = {
+  "moonshotai/Kimi-K2.6": [0.3, 1.2],
+  "nvidia/Nemotron-Cascade-2-30B-A3B": [0.15, 0.6],
+  "MiniMaxAI/MiniMax-M2.7": [0.3, 1.2],
+};
+
+export interface ChatMsg { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
+export interface ToolCall { id: string; type: "function"; function: { name: string; arguments: string } }
+export interface ToolDef { type: "function"; function: { name: string; description: string; parameters: unknown } }
+
+const spend = { usd: 0, inTok: 0, outTok: 0 };
+const SPEND_KILL_USD = 150;
+export const getSpend = () => ({ ...spend });
+
+export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef[], opts: { maxTokens?: number; signal?: AbortSignal } = {}) {
+  if (spend.usd >= SPEND_KILL_USD) throw new Error(`SPEND KILL: $${spend.usd.toFixed(2)} >= $${SPEND_KILL_USD}`);
+  const primary = MODELS[tier];
+  let model = primary;
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const t0 = Date.now();
+      const r = await fetch(BASE, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env("VULTR_INFERENCE_API_KEY")}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, messages, ...(tools ? { tools } : {}), temperature: 0.1, top_p: 0.9, max_tokens: opts.maxTokens ?? 1200 }),
+        signal: opts.signal ?? AbortSignal.timeout(90_000),
+      });
+      if (r.status === 429 || r.status >= 500) {
+        lastErr = new Error(`HTTP ${r.status}`);
+        if (attempt === 1 && FALLBACK[model]) model = FALLBACK[model]; // failover once, pre-output only
+        await new Promise(res => setTimeout(res, 800 * (attempt + 1)));
+        continue;
+      }
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const j = await r.json();
+      const u = j.usage ?? {};
+      const [pin, pout] = PRICE[model] ?? [0.3, 1.2];
+      spend.inTok += u.prompt_tokens ?? 0; spend.outTok += u.completion_tokens ?? 0;
+      spend.usd += ((u.prompt_tokens ?? 0) * pin + (u.completion_tokens ?? 0) * pout) / 1e6;
+      const msg = j.choices?.[0]?.message ?? {};
+      return { message: msg as ChatMsg, model, ms: Date.now() - t0, usage: { in: u.prompt_tokens ?? 0, out: u.completion_tokens ?? 0, usd: spend.usd } };
+    } catch (e: any) {
+      lastErr = e;
+      if (e.name === "TimeoutError") { if (attempt === 1 && FALLBACK[model]) model = FALLBACK[model]; continue; }
+      if (attempt >= 3) break;
+      await new Promise(res => setTimeout(res, 600 * (attempt + 1)));
+    }
+  }
+  throw lastErr ?? new Error("chat failed");
+}

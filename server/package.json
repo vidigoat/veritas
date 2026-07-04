@@ -1,0 +1,18 @@
+{
+  "name": "@veritas/server",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "investigate": "tsx src/run-terminal.ts",
+    "test": "tsx src/tools.test.ts && tsx src/loop.test.ts"
+  },
+  "dependencies": {
+    "@veritas/shared": "workspace:*",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": { "tsx": "^4.19.0", "@types/node": "^22.0.0" }
+}
