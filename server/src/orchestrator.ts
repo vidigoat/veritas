@@ -11,6 +11,7 @@ import { TOOLS, toolDefs, type ToolCtx } from "./tools.js";
 import { SYSTEM, PHASE_HINTS } from "./prompts.js";
 import { loadCompany, type CompanyData } from "./data.js";
 import { verifyFinding } from "./verifier.js";
+import { CaseBrain } from "./brain.js";
 import type { CaseEvent, Phase, Finding } from "@veritas/shared";
 
 const PHASES: { phase: Phase; tier: "junior" | "senior"; maxTurns: number; tools?: string[] }[] = [
@@ -21,7 +22,7 @@ const PHASES: { phase: Phase; tier: "junior" | "senior"; maxTurns: number; tools
   { phase: "decide", tier: "senior", maxTurns: 10, tools: ["file_finding", "freeze_vendor", "update_hypothesis", "recompute"] },
 ];
 
-export interface CaseResult { findings: Finding[]; hypotheses: any[]; approvals: any[]; elapsedS: number; usd: number; events: CaseEvent[] }
+export interface CaseResult { findings: Finding[]; hypotheses: any[]; approvals: any[]; elapsedS: number; usd: number; events: CaseEvent[]; brain?: ReturnType<CaseBrain["snapshot"]> }
 
 export async function* runCase(companyDir: string, brief: string): AsyncGenerator<CaseEvent, CaseResult> {
   const t0 = Date.now();
@@ -33,8 +34,11 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
   const emitOut = (e: CaseEvent) => { events.push(e); return e; };
 
   const data: CompanyData = loadCompany(companyDir);
+  const brain = new CaseBrain();
   const ctx: ToolCtx = { data, hypotheses: new Map(), findings: [], evidenceLog: [], approvals: [],
-    emit: (type, payload) => { pending.push(mk(type, payload)); }, matchedVendors: new Set<string>() };
+    emit: (type, payload) => { pending.push(mk(type, payload)); }, matchedVendors: new Set<string>(), brain };
+  brain.upsertEntity("MER", "vendor", "Meridian Traders Pvt Ltd", { role: "subject_company" });
+  brain.record("Examination opened — routine annual fraud examination", "engagement");
 
   yield emitOut(mk("case_opened", { brief, corpus: data.stats }));
 
@@ -98,6 +102,13 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
         const m = xr.matches[0];
         TOOLS.update_hypothesis.run({ hyp_id: "H-shell", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) may be a shell company controlled by employee ${m.employee_id} (${m.employee_name}) — they share a registered/home address`, status: "investigating", confidence: 0.5, evidence_doc_ids: m.proof_docs, next_probe: "try to exonerate then rule out innocent causes" }, ctx);
         while (pending.length) yield emitOut(pending.shift()!);
+        try {
+          brain.upsertEntity(m.vendor_id, "vendor", m.vendor_name, { flagged: true });
+          brain.upsertEntity(m.employee_id, "employee", m.employee_name);
+          brain.addFact(m.vendor_id, "shared_" + m.field, String(m.value), m.proof_docs.join(","), 0.95);
+          brain.link(m.employee_id, m.vendor_id, "shares_address", `same ${m.field}: ${m.value}`);
+          brain.record(`Conflict of interest: ${m.vendor_name} shares ${m.field} with employee ${m.employee_name}`, "cross_reference", m.vendor_id);
+        } catch {}
         messages.push({ role: "user", content: `[ANOMALY] The conflict-of-interest scan flagged a shared address: vendor ${m.vendor_id} (${m.vendor_name}) and employee ${m.employee_id} (${m.employee_name}) share ${m.value} (proof docs ${m.proof_docs.join(", ")}). This is a LEAD, not a verdict. In INVESTIGATE you must first TRY TO EXONERATE this vendor (call exonerate — real service? shared coworking address? POs filed elsewhere?), then rule out all innocent causes, and CONFIRM only if the fraud hypothesis survives. If you find an innocent explanation, CLEAR it.` });
         if (process.env.VERITAS_BACKSTOP === "1") {
           const prof = TOOLS.vendor_profile.run({ vendor_id: m.vendor_id }, ctx);
@@ -117,7 +128,15 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
       for (let guard = 0; guard < 5; guard++) {
         const hyps = [...ctx.hypotheses.values()];
         const unresolved = hyps.filter(h => h.status === "investigating" || h.status === "open");
-        const confirmedUnfiled = hyps.filter(h => h.status === "confirmed").length > ctx.findings.length;
+        // A confirmed shell whose vendor has a cross_reference match is filed
+        // deterministically by the Nemotron-gated path below — don't force the
+        // model to file it here (that would bypass the independent verifier).
+        const confirmedUnfiled = hyps.some(h => {
+          if (h.status !== "confirmed") return false;
+          const vid = String(h.statement).match(/V-\d{3}/)?.[0];
+          if (vid && ctx.matchedVendors.has(vid)) return false;
+          return !ctx.findings.some(f => f.statement.includes(vid ?? "\u0000"));
+        });
         if (!unresolved.length && !confirmedUnfiled) break;
         const ledger = hyps.map(h => `- ${h.hyp_id} [${h.status}] ${String(h.statement).slice(0, 90)}`).join("\n");
         messages.push({ role: "user", content: `RESOLUTION REQUIRED. Current hypothesis ledger:\n${ledger}\nFiled findings: ${ctx.findings.length}.\nFor EACH hypothesis: if your investigation concluded it is fraud, call file_finding NOW (cited evidence: doc_ids or verified_by, confidence band). If innocent, call update_hypothesis with status=cleared and the innocent explanation. If you couldn't rule out an innocent cause, status=unproven. Do not leave any hypothesis "investigating". Act now with tool calls.` });
@@ -129,8 +148,15 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
           const stepId = `s${++stepSeq}`;
           const spec2 = TOOLS[tc.function.name];
           yield emitOut(mk("tool_call", { stepId, tool: tc.function.name, argsSummary: spec2?.describe(args) ?? tc.function.name, mono: `${tc.function.name}(…)`, model: spec.tier }));
-          const r = (() => { try { return spec2 ? spec2.run(args, ctx) : { error: "unknown tool" }; } catch (e: any) { return { error: e.message }; } })();
-          yield emitOut(mk("tool_result", { stepId, tool: tc.function.name, summary: r?.error ? `⚠ ${r.error}` : (r?.filed ? `filed ${r.filed}` : "recorded"), flagged: !!r?.error, ms: 1 }));
+          // Shell-company findings must clear the independent Nemotron verifier before they
+          // enter the report. Intercept the model's direct filing here and hand it to the
+          // deterministic Nemotron-gated path below (guarantees the second-examiner review
+          // runs on every shell finding, regardless of how the senior examiner reached it).
+          const isShellFile = tc.function.name === "file_finding" && /shell|billing_scheme/i.test(JSON.stringify(args));
+          const r = isShellFile
+            ? { queued: true, note: "shell-company finding queued for independent Nemotron verification" }
+            : (() => { try { return spec2 ? spec2.run(args, ctx) : { error: "unknown tool" }; } catch (e: any) { return { error: e.message }; } })();
+          yield emitOut(mk("tool_result", { stepId, tool: tc.function.name, summary: r?.error ? `⚠ ${r.error}` : (r?.queued ? "queued for independent verification →" : r?.filed ? `filed ${r.filed}` : "recorded"), flagged: !!r?.error, ms: 1 }));
           while (pending.length) yield emitOut(pending.shift()!);
           messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r).slice(0, 1500) });
         }
@@ -147,6 +173,13 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
         if (prof.error) continue;
         const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
         TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${vid}'`, expected: prof.total }, ctx);
+        try {
+          brain.addFact(vid, "invoice_count", prof.invoice_count, `${vid}-REG`, 1);
+          brain.addFact(vid, "total_paid", prof.total, `recompute#${ctx.evidenceLog.length}`, 1);
+          brain.addFact(vid, "po_coverage_pct", prof.po_coverage_pct, `${vid}-REG`, 1);
+          if (approver) brain.link(String(approver), vid, "controls", "sole approver of all invoices");
+          brain.record(`Confirmed shell: ${vid} — ${prof.invoice_count} invoices, ${prof.total}, ${prof.po_coverage_pct}% PO coverage`, "materialization", vid);
+        } catch {}
         const candidate = {
           class: "billing_scheme.shell_company",
           statement: `${h.statement}. ${prof.invoice_count} invoices totaling ${prof.total}, all approved by ${approver}, ${prof.po_coverage_pct}% PO coverage.`,
@@ -192,7 +225,7 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
   yield emitOut(mk("report_ready", { url: "/report", sections: 8, exhibitCount: ctx.findings.flatMap(f => f.evidence).length }));
   const sp = getSpend();
   const result: CaseResult = { findings: ctx.findings, hypotheses: [...ctx.hypotheses.values()], approvals: ctx.approvals,
-    elapsedS: Math.round((Date.now() - t0) / 1000), usd: +sp.usd.toFixed(3), events };
+    elapsedS: Math.round((Date.now() - t0) / 1000), usd: +sp.usd.toFixed(3), events, brain: brain.snapshot() };
   yield emitOut(mk("case_closed", { findings: ctx.findings.length, totalUsd: ctx.findings.length ? sumFindings(ctx.findings) : 0, confidence: ctx.findings[0]?.confidence ?? 0, elapsedS: result.elapsedS }));
   return result;
 }

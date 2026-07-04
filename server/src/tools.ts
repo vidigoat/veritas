@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { CompanyData } from "./data.js";
 import type { ToolDef } from "./llm.js";
 import type { Finding } from "@veritas/shared";
+import type { CaseBrain } from "./brain.js";
 
 export interface ToolCtx {
   data: CompanyData;
@@ -20,6 +21,7 @@ export interface ToolCtx {
   approvals: { action: string; target: string; reason: string; approved: boolean | null }[];
   emit: (type: string, payload: any) => void;
   matchedVendors: Set<string>; // vendors with a real cross_reference conflict — gates shell findings
+  brain?: CaseBrain; // working-memory graph (entities/facts/links/timeline) built as the case unfolds
 }
 export interface ToolSpec { def: ToolDef; readOnly: boolean; describe: (args: any) => string; run: (args: any, ctx: ToolCtx) => any }
 
