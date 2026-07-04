@@ -89,6 +89,12 @@ survives every innocent explanation.
 - **Upheld** → the finding stands, now with a cross-model second opinion on the record.
 - **Refuted** → the finding is downgraded to *unproven* — a caught false accusation.
 
+<div align="center">
+<img src="assets/screenshots/06-nemotron.png" width="820" alt="NVIDIA Nemotron, the independent second examiner, upholds the finding before it is filed" />
+<br/>
+<sub>NVIDIA Nemotron independently reviews the finding and upholds it before it enters the report.</sub>
+</div>
+
 Two examiners from different families rarely share the same blind spot, so a claim that
 survives both is far stronger than one model's confidence. This is the same principle as a
 second doctor's opinion, applied to fraud. Nemotron also runs the fast statistical sweep as
