@@ -187,3 +187,16 @@ senior investigator on Kimi, benchmark-chosen.
 Keep building until near-certain a Vultr judge — watching it investigate, interrogating it,
 handing it a fresh company — concludes it's the most complete, genuinely-intelligent enterprise
 agent in the track. Not a demo. An auditor you could hire.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| Eng Review | `/plan-eng-review` | Architecture & scope (required) | 1 | SCOPE REDUCTION URGED | Plan over-scopes ~5-10x for the ~14-16h real build window; 65-75% risk of arriving Sunday BROKEN, worse than today's working 10/10. Cut to a hardening plan. |
+| Outside Voice | Claude subagent | Independent 2nd opinion | 1 | AGREES | Same verdict: harden the working demo, make reasoning VISIBLE, 2-3 fraud types not 5, staged interrogation in video, keep backstop as net. Remote judging = video+repo, so full chat platform is invisible ROI. |
+
+CROSS-MODEL: full agreement. Both reviewers independently reached "PLAN-V2 as written likely LOSES a race we're winning; the winning move is hardening + visible reasoning, not a rebuild."
+VERDICT: SCOPE REDUCTION REQUIRED before build. Recommended plan = HARDEN v1: (1) tag working floor, (2) make disconfirming-search reasoning genuine + visible on timeline, (3) keep deterministic backstop as safety net, (4) 1 clean + 1 extra fraud type, (5) staged 3-question interrogation for the video, (6) report+README methodology story. Every V2 subsystem gated behind "does Meridian still run green?". CUT: arbitrary-CSV ingestion, vector/RRF, 5-type fleet, multi-specialist orchestration, full chat platform, 20+ tools.
+
+**UNRESOLVED DECISIONS:**
+- Scope: full V2 rebuild (high risk, likely loses) vs. harden-and-make-visible (achievable, keeps the 10/10, genuinely reasons on the visible path) — Vidit's call.
