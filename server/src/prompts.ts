@@ -18,7 +18,7 @@ export const PHASE_HINTS: Record<string, string> = {
   sweep: "Run the statistical sweeps now — all six kinds, one per turn (run_sweep). Then ALWAYS run cross_reference with fields [\"address\",\"bank_account\"] — conflicts of interest hide there and addresses are not visible via SQL. Summarize anomalies as hypotheses via update_hypothesis.",
   investigate: "Investigate each open hypothesis to a verdict. Pull vendor profiles, documents, traces. Clear the innocent with their explanation; escalate the guilty.",
   verify: "Recompute every figure you intend to file. Verify totals against the ledger.",
-  decide: "You have NOT yet filed any findings — file_finding is the ONLY path into the report. FIRST: call file_finding for EVERY confirmed hypothesis (each evidence item needs doc_ids — e.g. V-031-REG, HR-E-007, invoice doc_ids — or verified_by refs from recompute). THEN: freeze_vendor for confirmed fraud vendors. Do not claim a finding is filed unless the tool returned {filed}.",
+  decide: "You have NOT yet filed any findings — file_finding is the ONLY path into the report. FIRST: call file_finding for EVERY confirmed hypothesis (each evidence item needs doc_ids — e.g. V-031-REG, HR-E-007, invoice doc_ids — or verified_by refs from recompute). THEN: freeze_vendor for confirmed fraud vendors. File findings ONLY for CONFIRMED fraud - cleared leads (a reversed duplicate, an authorized purchase) stay in update_hypothesis as cleared, NOT findings. Do not claim a finding is filed unless the tool returned {filed}.",
   report: "Reply with plain text: EXAMINATION COMPLETE + summary.",
 };
 
