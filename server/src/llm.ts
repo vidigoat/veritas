@@ -19,6 +19,7 @@ export const MODELS: Record<ModelTier, string> = {
   senior: "Qwen/Qwen3.6-27B",
   junior: "Qwen/Qwen3.6-27B",
   judge: "nvidia/Nemotron-Cascade-2-30B-A3B",
+  drone: "deepseek-ai/DeepSeek-V4-Flash",  // fast direct-JSON extraction fleet
 };
 const FALLBACK: Record<string, string> = {
   "Qwen/Qwen3.6-27B": "Qwen/Qwen3.5-397B-A17B",        // both Vultr-native
@@ -31,6 +32,7 @@ const PRICE: Record<string, [number, number]> = {
   "Qwen/Qwen3.6-27B": [0.1, 0.4],
   "nvidia/Nemotron-Cascade-2-30B-A3B": [0.15, 0.6],
   "moonshotai/Kimi-K2.6": [0.3, 1.2],
+  "deepseek-ai/DeepSeek-V4-Flash": [0.15, 0.6],
 };
 
 export interface ChatMsg { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
@@ -41,7 +43,7 @@ const spend = { usd: 0, inTok: 0, outTok: 0 };
 const SPEND_KILL_USD = 150;
 export const getSpend = () => ({ ...spend });
 
-export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef[], opts: { maxTokens?: number; signal?: AbortSignal } = {}) {
+export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef[], opts: { maxTokens?: number; signal?: AbortSignal; noThink?: boolean; timeoutMs?: number } = {}) {
   if (spend.usd >= SPEND_KILL_USD) throw new Error(`SPEND KILL: $${spend.usd.toFixed(2)} >= $${SPEND_KILL_USD}`);
   const primary = MODELS[tier];
   let model = primary;
@@ -52,8 +54,8 @@ export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef
       const r = await fetch(BASE, {
         method: "POST",
         headers: { Authorization: `Bearer ${env("VULTR_INFERENCE_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, ...(tools ? { tools } : {}), temperature: 0.1, top_p: 0.9, max_tokens: opts.maxTokens ?? 1200 }),
-        signal: opts.signal ?? AbortSignal.timeout(90_000),
+        body: JSON.stringify({ model, messages, ...(tools ? { tools } : {}), ...(opts.noThink ? { chat_template_kwargs: { enable_thinking: false } } : {}), temperature: 0.1, top_p: 0.9, max_tokens: opts.maxTokens ?? 1200 }),
+        signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? 90_000),
       });
       if (r.status === 429 || r.status >= 500) {
         lastErr = new Error(`HTTP ${r.status}`);

@@ -33,7 +33,7 @@ export type CaseEvent =
 
 export type Ev<T extends string, P> = { id: string; ts: number; type: T; phase: Phase | null; payload: P };
 export type HypStatus = "open" | "investigating" | "cleared" | "confirmed" | "unproven";
-export type ModelTier = "senior" | "junior" | "judge";
+export type ModelTier = "senior" | "junior" | "judge" | "drone";
 export interface CorpusStats { docs: number; txns: number; vendors: number; employees: number }
 export interface GraphNode { id: string; kind: "vendor" | "employee" | "account"; name: string; totalUsd?: number; state: "default" | "investigating" | "cleared" | "confirmed" }
 export interface GraphEdge { id: string; from: string; to: string; kind: "payment" | "approval" | "match"; amountUsd?: number; label?: string; state: "default" | "investigating" | "confirmed" }

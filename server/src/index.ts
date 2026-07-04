@@ -18,6 +18,9 @@ import { join } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 import type { CaseEvent } from "@veritas/shared";
 import { answerQuestion } from "./qa.js";
+import { runCorpus } from "./orchestrator2.js";
+import { ingestDir, ingestFiles } from "./ingest.js";
+import { mkdirSync, writeFileSync as wf } from "node:fs";
 import { loadCompany } from "./data.js";
 
 interface Run { id: string; events: CaseEvent[]; done: boolean; result?: any; approve?: () => void }
@@ -145,6 +148,71 @@ app.post("/api/case/:id/ask", async c => {
     },
     cancel() {},
   }), { headers: sseHeaders });
+});
+
+// ── VERITAS v2 — genuine document-scale runs ────────────────────────────────
+interface V2Run { id: string; events: CaseEvent[]; done: boolean; result?: any; dir: string }
+const v2runs = new Map<string, V2Run>();
+const UPLOADS = join(ROOT, "server/uploads");
+const DEMO_CORPUS = join(ROOT, "datagen/data/out/corpus");
+
+// upload a folder of a company's books → returns caseId + corpus stats
+app.post("/api/v2/upload", async c => {
+  const body = await c.req.json().catch(() => ({} as any));
+  const files: { name: string; text?: string; base64?: string }[] = body.files ?? [];
+  if (!files.length) return c.json({ error: "no files" }, 400);
+  const id = Math.random().toString(36).slice(2, 8);
+  const dir = join(UPLOADS, id);
+  try { mkdirSync(dir, { recursive: true }); } catch {}
+  for (const f of files.slice(0, 5000)) {
+    const text = f.text ?? (f.base64 ? Buffer.from(f.base64, "base64").toString("utf8") : "");
+    try { wf(join(dir, f.name.replace(/[^\w.\-]/g, "_")), text); } catch {}
+  }
+  const corpus = ingestDir(dir);
+  return c.json({ caseId: id, stats: corpus.stats, total: corpus.total });
+});
+
+// start a genuine run (over an uploaded caseId, or the bundled demo corpus)
+app.post("/api/v2/run", async c => {
+  const body = await c.req.json().catch(() => ({} as any));
+  const dir = body.caseId && existsSync(join(UPLOADS, body.caseId)) ? join(UPLOADS, body.caseId) : DEMO_CORPUS;
+  const id = Math.random().toString(36).slice(2, 8);
+  const run: V2Run = { id, events: [], done: false, dir };
+  v2runs.set(id, run);
+  (async () => {
+    const gen = runCorpus(dir);
+    try { while (true) { const { value, done } = await gen.next(); if (done) { run.result = value; break; } run.events.push(value); } }
+    catch (e: any) { run.events.push({ id: "err", ts: Date.now(), type: "error", phase: null, payload: { message: e.message } } as any); }
+    run.done = true;
+  })();
+  return c.json({ caseId: id });
+});
+
+app.get("/api/v2/run/:id/events", c => {
+  const run = v2runs.get(c.req.param("id"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  const after = parseInt(c.req.query("after") ?? "0");
+  return new Response(sseStream(() => run.events, () => run.done, after), { headers: sseHeaders });
+});
+
+// list the corpus (for the browsable case file)
+app.get("/api/v2/corpus/:caseId", c => {
+  const cid = c.req.param("caseId");
+  const dir = cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid);
+  if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
+  const corpus = ingestDir(dir);
+  return c.json({ stats: corpus.stats, total: corpus.total, docs: corpus.order.map(id => { const d = corpus.docs.get(id)!; return { docId: d.docId, filename: d.filename, type: d.type, preview: d.text.slice(0, 120) }; }) });
+});
+
+// fetch one real document (clickable citations open this)
+app.get("/api/v2/doc/:caseId/:docId", c => {
+  const cid = c.req.param("caseId"); const did = c.req.param("docId");
+  const dir = cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid);
+  if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
+  const corpus = ingestDir(dir);
+  const d = corpus.docs.get(did) ?? corpus.docs.get(did.toUpperCase());
+  if (!d) return c.json({ error: "doc not found" }, 404);
+  return c.json({ docId: d.docId, filename: d.filename, type: d.type, text: d.text });
 });
 
 serve({ fetch: app.fetch, port: 8787 }, i => console.log(`VERITAS server → http://localhost:${i.port}`));
