@@ -6,8 +6,13 @@ export function DocViewer({ docId, onClose, fetchDoc }: { docId: string; onClose
   const [doc, setDoc] = useState<{ docId: string; type: string; text: string } | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => { let live = true; setLoading(true); fetchDoc(docId).then(d => { if (live) { setDoc(d); setLoading(false); } }); return () => { live = false; }; }, [docId]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
-    <div className="fixed inset-0 z-[60] bg-black/25 flex justify-center overflow-y-auto py-10 fadein" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/25 flex justify-center overflow-y-auto py-10 fadein" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Source document ${docId}`}>
       <div className="bg-white w-[720px] max-w-[92vw] rounded-card shadow-lift h-fit border border-hairline scalein" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-5 py-3 border-b border-line">
           <span className="mono text-[11px] font-bold text-ice bg-ice-pale rounded px-1.5 py-0.5">DOC</span>

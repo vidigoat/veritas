@@ -10,7 +10,7 @@ import type { Store } from "./extract.js";
 import type { Anomaly, SchemeClass } from "./contracts.js";
 
 const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const money = (n: number) => Math.round(n).toLocaleString();
+const money = (n: number) => "€" + Math.round(n).toLocaleString("en-US");
 let seq = 0; const aid = () => `A-${++seq}`;
 
 export function detectAnomalies(store: Store): Anomaly[] {
@@ -73,7 +73,7 @@ function detectShellCompanies(store: Store): Anomaly[] {
       subjectIds: [vid, hit.id], amount: total,
       proofDocs: [v.sourceDoc, hit.doc].filter(Boolean),
       detail: `${v.name} and ${hit.name} share the exact ${field}. ${txns.length} invoices totalling ${money(total)}${approvers.size === 1 ? `, all approved by ${[...approvers][0]}` : ""}, ${Math.round(poCoverage * 100)}% PO coverage${v.taxId === undefined ? ", no tax ID" : ""}.`,
-      strength: Math.min(strength, 0.95),
+      strength: +Math.min(strength, 0.95).toFixed(2),
     });
   }
   return out;
@@ -136,8 +136,8 @@ function detectDuplicatePayments(store: Store): Anomaly[] {
       subjectIds: [], amount: reversed ? 0 : grp[0].amount,
       proofDocs: [...new Set(grp.map(g => g.sourceDoc))],
       detail: reversed
-        ? `A duplicate payment of ${money(grp[0].amount)} — but a matching credit note reverses it. Likely a caught accounting error, not a loss. Verify the reversal.`
-        : `The same ${money(grp[0].amount)} payment appears ${grp.length} times with no reversing credit note. A likely duplicate-payment loss.`,
+        ? `A duplicate payment of ${money(grp[0].amount)} — but a matching credit note reverses it. Likely a caught accounting error, not a loss. Verify the reversal. Debits: ${grp.map(g => `"${(g.description ?? "").slice(0, 60)}" (${g.sourceDoc})`).join(" · ")}.`
+        : `The same ${money(grp[0].amount)} payment appears ${grp.length} times with no reversing credit note anywhere in the books — both debits reference the same invoice. Debits: ${grp.map(g => `"${(g.description ?? "").slice(0, 60)}" (${g.sourceDoc})`).join(" · ")}. A likely duplicate-payment loss.`,
       strength: reversed ? 0.35 : 0.7,
     });
   }

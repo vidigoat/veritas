@@ -1,24 +1,22 @@
-# Model bake-off — how the two examiners were chosen
+# Model bake-off — how the examiners were chosen
 
-VERITAS runs two model tiers on **Vultr Serverless Inference**: a fast *junior
-examiner* for the statistical sweep and evaluation, and a *senior examiner* for the
-deep investigation, verification, and reporting. Neither was chosen by reputation.
+Every model VERITAS ships was chosen by measurement, not reputation. The harness
+(`scripts/bakeoff-vultr.mjs`) runs each candidate on **Vultr Serverless Inference**
+against a fixed 4-task suite exercising the exact shapes the agent depends on —
+a tool-call decision, a multi-step tool chain, argument correctness, and SQL
+generation — scored on correctness and p50 latency.
 
-Every candidate on Vultr was run against a fixed 4-task harness that exercises the
-exact shapes VERITAS depends on — a simple completion, a tool-call decision, a
-multi-step tool chain, and a SQL-generation task — scored on correctness and p50
-latency. Results:
+Final results (re-run July 5, 2026, on the shipped stack):
 
-| Model | Score | p50 latency | Notes |
-|-------|:-----:|:-----------:|-------|
-| **moonshotai/Kimi-K2.6** | **4/4** | 1950 ms | Chosen as **senior examiner** — best reasoning + tool discipline |
-| **nvidia/Nemotron-Cascade-2-30B-A3B** | **4/4** | **1320 ms** | Chosen as **junior examiner + independent verifier** — fastest clean 4/4 |
-| MiniMaxAI/MiniMax-M2.7 | 4/4 | 1282 ms | Strong, but weaker on the SQL task under load |
-| deepseek-ai/DeepSeek-V4-Flash | 4/4 | 3023 ms | Correct but slow |
-| nvidia/Nemotron-3-Nano-Omni | 2/4 | 2510 ms | Dropped tool calls on the chain + SQL tasks |
-| zai-org/GLM-5.2-FP8 | 2/4 | 2049 ms | 504 timeouts under load |
+| Model | Score | p50 latency | Role |
+|-------|:-----:|:-----------:|------|
+| **Qwen/Qwen3.6-27B** | **4/4** | 2100 ms | **Senior examiner** — plans, hypothesizes, decides every verdict |
+| **nvidia/Nemotron-Cascade-2-30B-A3B** | **4/4** | **1601 ms** | **Independent verifier panel + extraction fleet** — a second model family, so no finding rests on one model's judgment |
+| Qwen/Qwen3.5-397B-A17B | 4/4 | 5918 ms | Fallback senior (correct but ~3× slower) |
+| moonshotai/Kimi-K2.6 | 4/4 | 1729 ms | Not shipped — Qwen3.6-27B matches it at a fraction of the price |
 
-**Senior = Kimi-K2.6** (deep reasoning, holds the investigation).
-**Junior + verifier = Nemotron-Cascade-2** (fastest clean pass — cheap triage, and a
-different model family for the independent second opinion, so the verifier's blind
-spots are not correlated with the examiner's).
+Retrieval is separate: all document ranking runs on the **VultronRetriever**
+family (`Prime-8B` for decisive questions, `Core-4.5B` for routine reranks) via
+`/v1/rerank` — see `server/src/retriever.ts`.
+
+Reproduce: `node scripts/bakeoff-vultr.mjs` (needs `VULTR_INFERENCE_API_KEY` in `.env`).

@@ -79,3 +79,42 @@ export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef
   }
   throw lastErr ?? new Error("chat failed");
 }
+
+/** Streaming chat — yields token deltas as they arrive from Vultr Serverless Inference. */
+export async function* streamChat(tier: ModelTier, messages: ChatMsg[], opts: { maxTokens?: number; noThink?: boolean; timeoutMs?: number } = {}): AsyncGenerator<string> {
+  if (spend.usd >= SPEND_KILL_USD) throw new Error(`SPEND KILL: $${spend.usd.toFixed(2)} >= $${SPEND_KILL_USD}`);
+  const model = MODELS[tier];
+  const r = await fetch(BASE, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env("VULTR_INFERENCE_API_KEY")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, stream: true, stream_options: { include_usage: true }, ...(opts.noThink ? { chat_template_kwargs: { enable_thinking: false } } : {}), temperature: 0.1, top_p: 0.9, max_tokens: opts.maxTokens ?? 900 }),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
+  });
+  if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}: ${(await r.text().catch(() => "")).slice(0, 200)}`);
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") return;
+      try {
+        const j = JSON.parse(payload);
+        const u = j.usage;
+        if (u) {
+          const [pin, pout] = PRICE[model] ?? [0.3, 1.2];
+          spend.inTok += u.prompt_tokens ?? 0; spend.outTok += u.completion_tokens ?? 0;
+          spend.usd += ((u.prompt_tokens ?? 0) * pin + (u.completion_tokens ?? 0) * pout) / 1e6;
+        }
+        const delta = j.choices?.[0]?.delta?.content;
+        if (delta) yield delta;
+      } catch { /* partial line */ }
+    }
+  }
+}

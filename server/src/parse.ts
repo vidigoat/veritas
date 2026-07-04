@@ -31,8 +31,8 @@ export function parseCorpus(corpus: Corpus): Extracted {
       } else if (d.type === "invoice") {
         const vendor = t.split("\n")[0].trim();
         ex.transactions.push({ vendor, vendorId: grab(t, "Vendor ID"), amount: num(grab(t, "TOTAL PAYABLE", "Total", "Amount Due", "Grand Total")) ?? 0,
-          invoiceNo: grab(t, "Invoice No", "Invoice Number", "AP Voucher"), approver: grab(t, "Approver", "Approved By", "Authorised By"),
-          po: grab(t, "PO Reference", "PO Ref", "Purchase Order", "PO No") ?? null, sourceDoc: id });
+          invoiceNo: grab(t, "Invoice No", "Invoice Number", "AP Voucher"), approver: grab(t, "Approved for payment by", "Approver", "Approved By", "Authorised By"),
+          po: cleanPo(grab(t, "PO Reference", "PO Ref", "Purchase Order", "PO No")), sourceDoc: id });
       } else if (d.type === "bank_statement") {
         for (const line of t.split("\n")) {
           const dm = line.match(/^\s*(\d{4}-\d{2}-\d{2})\s+(\S+)\s+(.+)$/);
@@ -63,4 +63,9 @@ export function parseCorpus(corpus: Corpus): Extracted {
   return ex;
 }
 const cleanTax = (s?: string) => !s || /not provided|n\/a|none|^\[/i.test(s) ? undefined : s;
+// "Purchase Order Ref: - (none on file)" is NOT a PO — only a real reference counts
+const cleanPo = (s?: string) => {
+  const v = (s ?? "").trim().replace(/^Ref\.?:?\s*/i, "").trim();
+  return !v || /^[-–—]|^none|n\/a|not on file|none on file/i.test(v) ? null : v;
+};
 const grabAcct = (line: string) => { const m = line.match(/(?:A\/C|Account|Bank)[^\dX]*([X\d]{4,})/i) || line.match(/([X*]{2,}\d{3,})/); return m ? m[1] : undefined; };

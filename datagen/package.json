@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "generate": "tsx src/generate.ts",
-    "test": "tsx src/determinism.test.ts"
+    "test": "tsx src/determinism.test.ts",
+    "corpus": "tsx src/corpus.ts"
   },
   "dependencies": {
     "@veritas/shared": "workspace:*"

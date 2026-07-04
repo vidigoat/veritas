@@ -19,6 +19,7 @@ import { readFileSync, existsSync } from "node:fs";
 import type { CaseEvent } from "@veritas/shared";
 import { answerQuestion } from "./qa.js";
 import { runCorpus } from "./orchestrator2.js";
+import { answerCorpusQuestion } from "./qa2.js";
 import { ingestDir, ingestFiles } from "./ingest.js";
 import { mkdirSync, writeFileSync as wf } from "node:fs";
 import { loadCompany } from "./data.js";
@@ -113,8 +114,10 @@ app.get("/api/demo/events", c => {
   }), { headers: sseHeaders });
 });
 
-// fixture recorder: run once, save events
+// fixture recorder: run once, save events (localhost only — it burns real inference)
 app.post("/api/record-fixture", async c => {
+  const host = c.req.header("host") ?? "";
+  if (!host.startsWith("localhost") && !host.startsWith("127.")) return c.json({ error: "localhost only" }, 403);
   const gen = runCase(join(ROOT, "datagen/data/out/meridian"), ENGAGEMENT);
   const evs: CaseEvent[] = [];
   while (true) { const { value, done } = await gen.next(); if (done) break; evs.push(value); }
@@ -156,6 +159,14 @@ const v2runs = new Map<string, V2Run>();
 const UPLOADS = join(ROOT, "server/uploads");
 const DEMO_CORPUS = join(ROOT, "datagen/data/out/corpus");
 
+// corpora are immutable once uploaded — ingest each directory once, then reuse
+const corpusCache = new Map<string, ReturnType<typeof ingestDir>>();
+const getCorpus = (dir: string) => {
+  let c = corpusCache.get(dir);
+  if (!c) { c = ingestDir(dir); corpusCache.set(dir, c); if (corpusCache.size > 24) corpusCache.delete(corpusCache.keys().next().value!); }
+  return c;
+};
+
 // upload a folder of a company's books → returns caseId + corpus stats
 app.post("/api/v2/upload", async c => {
   const body = await c.req.json().catch(() => ({} as any));
@@ -172,8 +183,16 @@ app.post("/api/v2/upload", async c => {
   return c.json({ caseId: id, stats: corpus.stats, total: corpus.total });
 });
 
-// start a genuine run (over an uploaded caseId, or the bundled demo corpus)
+// start a genuine run (over an uploaded caseId, or the bundled demo corpus).
+// Guarded: bounded concurrency + a small per-IP hourly budget (each run costs real inference).
+const ipRuns = new Map<string, number[]>();
 app.post("/api/v2/run", async c => {
+  const live = [...v2runs.values()].filter(r => !r.done).length;
+  if (live >= 3) return c.json({ error: "the engine is at capacity — try again in a minute" }, 429);
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const hist = (ipRuns.get(ip) ?? []).filter(t => Date.now() - t < 3600_000);
+  if (hist.length >= 12) return c.json({ error: "hourly examination limit reached for this address" }, 429);
+  hist.push(Date.now()); ipRuns.set(ip, hist);
   const body = await c.req.json().catch(() => ({} as any));
   const dir = body.caseId && existsSync(join(UPLOADS, body.caseId)) ? join(UPLOADS, body.caseId) : DEMO_CORPUS;
   const id = Math.random().toString(36).slice(2, 8);
@@ -200,7 +219,7 @@ app.get("/api/v2/corpus/:caseId", c => {
   const cid = c.req.param("caseId");
   const dir = v2runs.get(cid)?.dir ?? (cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid));
   if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
-  const corpus = ingestDir(dir);
+  const corpus = getCorpus(dir);
   return c.json({ stats: corpus.stats, total: corpus.total, docs: corpus.order.map(id => { const d = corpus.docs.get(id)!; return { docId: d.docId, filename: d.filename, type: d.type, preview: d.text.slice(0, 120) }; }) });
 });
 
@@ -209,10 +228,73 @@ app.get("/api/v2/doc/:caseId/:docId", c => {
   const cid = c.req.param("caseId"); const did = c.req.param("docId");
   const dir = v2runs.get(cid)?.dir ?? (cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid));
   if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
-  const corpus = ingestDir(dir);
+  const corpus = getCorpus(dir);
   const d = corpus.docs.get(did) ?? corpus.docs.get(did.toUpperCase());
   if (!d) return c.json({ error: "doc not found" }, 404);
   return c.json({ docId: d.docId, filename: d.filename, type: d.type, text: d.text });
 });
 
-serve({ fetch: app.fetch, port: 8787 }, i => console.log(`VERITAS server → http://localhost:${i.port}`));
+// the compiled examination report — the artifact an audit committee walks away with
+app.get("/api/v2/run/:id/report", c => {
+  const run = v2runs.get(c.req.param("id"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  if (!run.result) return c.json({ error: "examination still in progress" }, 425);
+  const r = run.result;
+  const company = (run.events.find(e => e.type === "corpus_loaded")?.payload as any)?.company;
+  return c.json({ company, findings: r.findings, cleared: r.cleared, corpus: r.corpus, usd: r.usd, elapsedS: r.elapsedS });
+});
+
+// approve a freeze — the human-in-the-loop action, recorded with a receipt
+app.post("/api/v2/run/:id/approve", async c => {
+  const run = v2runs.get(c.req.param("id"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  const body = await c.req.json().catch(() => ({} as any));
+  const target = String(body.target ?? "").slice(0, 40) || "unknown";
+  const receiptId = `FRZ-${Date.now().toString(36).toUpperCase()}`;
+  run.events.push({ id: `ap-${receiptId}`, ts: Date.now(), type: "action_executed", phase: "report", payload: { action: "freeze_vendor", target, receiptId } } as any);
+  return c.json({ ok: true, receiptId, target });
+});
+
+// INTERROGATE the case — a live, retrieval-grounded, streaming answer
+app.post("/api/v2/ask/:caseId", async c => {
+  const run = v2runs.get(c.req.param("caseId"));
+  if (!run) return c.json({ error: "run not found" }, 404);
+  const body = await c.req.json().catch(() => ({} as any));
+  const question = String(body.question ?? "").slice(0, 500).trim();
+  if (!question) return c.json({ error: "question required" }, 400);
+  const corpus = getCorpus(run.dir);
+  const findings = run.result?.findings ?? run.events.filter(e => e.type === "finding").map((e: any) => e.payload.finding);
+  const cleared = run.result?.cleared ?? run.events.filter(e => e.type === "cleared").map((e: any) => e.payload.anomaly);
+  const company = (run.events.find(e => e.type === "corpus_loaded")?.payload as any)?.company;
+  return new Response(new ReadableStream({
+    async start(ctrl) {
+      const enc = new TextEncoder(); let closed = false;
+      const safe = (s: string) => { try { ctrl.enqueue(enc.encode(s)); } catch { closed = true; } };
+      try {
+        for await (const ev of answerCorpusQuestion(corpus, { findings, cleared, company }, question)) {
+          if (closed) break;
+          safe(`data: ${JSON.stringify(ev)}\n\n`);
+        }
+      } catch { safe(`data: ${JSON.stringify({ type: "answer_delta", payload: { text: "I hit an error answering that." } })}\n\n`); }
+      safe(`data: {"type":"__done"}\n\n`); try { ctrl.close(); } catch {}
+    },
+    cancel() {},
+  }), { headers: sseHeaders });
+});
+
+// ── static console — if web/out exists, this VM serves the whole product at "/" ──
+const WEB_OUT = join(ROOT, "web/out");
+if (existsSync(WEB_OUT)) {
+  const MIME: Record<string, string> = { html: "text/html", js: "text/javascript", css: "text/css", svg: "image/svg+xml", json: "application/json", png: "image/png", ico: "image/x-icon", txt: "text/plain", woff2: "font/woff2" };
+  app.get("*", c => {
+    const raw = c.req.path === "/" ? "/index.html" : c.req.path;
+    const safe = raw.replace(/\.\./g, "");
+    let fp = join(WEB_OUT, safe);
+    if (!existsSync(fp)) fp = join(WEB_OUT, "index.html"); // SPA fallback
+    const ext = fp.split(".").pop() ?? "html";
+    return new Response(readFileSync(fp), { headers: { "Content-Type": MIME[ext] ?? "application/octet-stream", "Cache-Control": safe.startsWith("/_next/") ? "public, max-age=31536000, immutable" : "no-cache" } });
+  });
+}
+
+const PORT = parseInt(env("PORT", "8787"));
+serve({ fetch: app.fetch, port: PORT }, i => console.log(`VERITAS server → http://localhost:${i.port}`));

@@ -24,4 +24,5 @@ design-system.md
 datagen/data/
 evals/results/
 server/fixtures/
-!web/public/demo-run.json
+server/uploads/
+!web/public/demo-v2.json

@@ -14,8 +14,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   }, [beat]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white px-6">
-      <button onClick={onDone} className="absolute top-6 right-7 text-[13px] text-ink-50 hover:text-ink transition-colors">Skip →</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white px-6" onClick={() => (beat === 0 ? setBeat(1) : onDone())}>
+      <button onClick={e => { e.stopPropagation(); onDone(); }} className="absolute top-6 right-7 text-[13px] text-ink-50 hover:text-ink transition-colors">Skip →</button>
       {beat === 0 ? (
         <div className="text-center scalein">
           <div className="flex justify-center mb-7"><LogoMark size={76} /></div>

@@ -1,43 +1,58 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useCorpus } from "@/lib/useCorpus";
 import { Onboarding } from "@/components/Onboarding";
 import { Composer } from "@/components/Composer";
 import { CorpusThread } from "@/components/v2/CorpusThread";
 import { DocViewer } from "@/components/v2/DocViewer";
 import { LogoMark } from "@/components/Logo";
-import { FolderOpen, Lock } from "@phosphor-icons/react";
+import { FolderOpen } from "@phosphor-icons/react";
 
 export default function Home() {
-  const { state, upload, runLive, openDoc, approve } = useCorpus();
+  const { state, upload, runLive, runReplay, resume, ask, openDoc, approve } = useCorpus();
   const [onboard, setOnboard] = useState(true);
   const [started, setStarted] = useState(false);
   const [input, setInput] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<{ total: number } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [emptyPick, setEmptyPick] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // refresh-proof: reattach to an in-flight examination instead of losing it
+  useEffect(() => {
+    let inflight = false;
+    try { inflight = !!sessionStorage.getItem("veritas-case"); } catch {}
+    if (!inflight) return;
+    resume().then(ok => { if (ok) { setOnboard(false); setStarted(true); } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onFiles(files: FileList | null) {
     if (!files?.length) return;
-    setUploading(true);
-    const arr = Array.from(files).filter(f => /\.(txt|csv|md|pdf|json)$/i.test(f.name) && !/manifest\.json$/i.test(f.name));
+    setUploading(true); setEmptyPick(false);
+    const arr = Array.from(files).filter(f => /\.(txt|csv|md|tsv|log)$/i.test(f.name) && !/manifest\.json$/i.test(f.name));
+    if (!arr.length) { setUploading(false); setEmptyPick(true); return; }
     const res = await upload(arr);
     setUploading(false);
-    if (res) setUploaded({ total: res.total });
+    if (res && res.total > 0) setUploaded({ total: res.total });
+    else setEmptyPick(true);
   }
   const beginLive = () => { setStarted(true); runLive(); };
-  const canAsk = state.status === "done";
+  const canAsk = state.status === "done" && !state.replay;
+  const submit = () => { const q = input.trim(); if (!q || !canAsk) return; setInput(""); ask(q); };
 
   if (onboard) return <Onboarding onDone={() => setOnboard(false)} />;
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-dvh flex flex-col bg-white">
       <div className="flex items-center gap-3 px-6 h-14 border-b border-line shrink-0">
         <LogoMark size={26} /><span className="font-display font-medium tracking-[0.06em] text-[16px]">VERITAS</span>
+        {started && state.phase && state.status === "running" && (
+          <span className="mono text-[11px] text-ink-50 ml-3">{state.phase.index}/{state.phase.of} · {state.phase.title}</span>
+        )}
         <div className="ml-auto flex items-center gap-2.5">
-          {state.freeze && !state.approved && <button onClick={approve} className="flex items-center gap-1.5 bg-crimson text-white font-medium text-[12.5px] px-3 py-1.5 rounded-control hover:opacity-90"><Lock size={13} weight="duotone" /> Approve freeze: {state.freeze.target}</button>}
-          {state.approved && <span className="text-nvidia font-semibold text-[12.5px]">✓ frozen</span>}
+          {state.replay && <span className="mono text-[11px] text-ink-50 bg-cream border border-line px-2.5 h-7 flex items-center rounded-control">recorded replay</span>}
           <div className="mono text-[11px] text-ink-50 bg-cream border border-line px-2.5 h-7 flex items-center rounded-control">{state.usage ? `$${state.usage.usd.toFixed(3)}` : "Vultr"}</div>
         </div>
       </div>
@@ -60,8 +75,15 @@ export default function Home() {
                 <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-2 bg-ink text-white font-medium text-[15px] px-7 py-3.5 rounded-control hover:bg-fire transition-colors">
                   <FolderOpen size={18} weight="duotone" /> {uploading ? "reading the folder…" : "Upload a company’s books"}
                 </button>
-                <span className="text-[12.5px] text-ink-50 max-w-[440px]">Pick the folder of files &mdash; invoices, bank statements, payroll, contracts. It reads them for real and cites every finding.</span>
+                <span className="text-[12.5px] text-ink-50 max-w-[440px]">Pick the folder of files &mdash; invoices, bank statements, payroll, HR records as text, CSV, or markdown exports (PDF OCR is on the roadmap). It reads them for real and cites every finding.</span>
+                {emptyPick && <span className="text-[12.5px] text-crimson">That folder had no readable documents (.txt / .csv / .md) &mdash; pick the folder that contains the books.</span>}
                 <input ref={fileRef} type="file" multiple {...({ webkitdirectory: "", directory: "" } as any)} className="hidden" onChange={e => onFiles(e.target.files)} />
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="h-px w-16 bg-line" /><span className="text-[11.5px] text-ink-30">or</span><div className="h-px w-16 bg-line" />
+                </div>
+                <button onClick={beginLive} className="text-[13.5px] font-medium text-ink underline decoration-line underline-offset-4 hover:decoration-ink transition-colors">
+                  Examine the demo company &mdash; 1,090 documents, live
+                </button>
               </div>
             )}
             <div className="mono text-[11px] text-ink-30 mt-8">Nemotron drone-fleet reads &middot; VultronRetriever retrieves &middot; Nemotron panel judges &mdash; all on Vultr</div>
@@ -69,9 +91,9 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto"><CorpusThread state={state} onOpenDoc={setOpenId} /></div>
+          <div className="flex-1 overflow-y-auto" data-scroller><CorpusThread state={state} onOpenDoc={setOpenId} onAsk={q => { if (canAsk) ask(q); }} onApprove={approve} /></div>
           <div className="border-t border-line bg-white shrink-0"><div className="mx-auto max-w-[740px] px-5 py-3.5">
-            <Composer value={input} onChange={setInput} onSubmit={() => {}} disabled={!canAsk} placeholder={canAsk ? "Ask a follow-up — click any DOC to read the source…" : "VERITAS is examining the books…"} />
+            <Composer value={input} onChange={setInput} onSubmit={submit} disabled={!canAsk} placeholder={canAsk ? "Interrogate the case — “how do you know it’s a shell?”" : state.replay ? "This is the recorded replay — run live to interrogate the case" : "VERITAS is examining the books…"} />
           </div></div>
         </>
       )}

@@ -1,8 +1,9 @@
 # Deploying VERITAS on Vultr
 
 VERITAS runs entirely on Vultr: retrieval on **VultronRetriever**, reasoning on **Vultr
-Serverless Inference**, and the agent backend on a **Vultr Cloud Compute** VM. The console
-is a static bundle you can host anywhere (Vultr Object Storage, Cloudflare Pages, etc.).
+Serverless Inference**, and one **Vultr Cloud Compute** VM that serves both the forensic
+engine (Hono, SSE) and the static console — a single public URL, same-origin, no CORS or
+mixed-content traps.
 
 ## 1. Vultr Serverless Inference (models)
 
@@ -10,38 +11,41 @@ Nothing to provision — the models are already served. You only need an inferen
 
 1. In the Vultr console, open **Serverless Inference** and create an API key.
 2. The agent uses (all on `api.vultrinference.com`):
-   - **Retrieval:** `vultr/VultronRetrieverPrime-Qwen3.5-8B` · `…Core-Qwen3.5-4.5B` · `…Flash-Qwen3.5-0.8B` (`/v1/rerank`)
-   - **Reasoning:** `Qwen/Qwen3.6-27B` (senior + junior), `Qwen/Qwen3.5-397B-A17B` (fallback) (`/v1/chat/completions`)
-   - **Independent verifier:** `nvidia/Nemotron-Cascade-2-30B-A3B`
+   - **Retrieval:** `vultr/VultronRetrieverPrime-Qwen3.5-8B` · `…Core-Qwen3.5-4.5B` (`/v1/rerank`)
+   - **Reasoning:** `Qwen/Qwen3.6-27B` (senior), `Qwen/Qwen3.5-397B-A17B` (fallback) (`/v1/chat/completions`)
+   - **Independent verifier + fleet:** `nvidia/Nemotron-Cascade-2-30B-A3B`
 
-## 2. Backend — Vultr Cloud Compute VM
+## 2. The VM — engine + console together
 
 ```bash
-# Provision: Vultr Cloud Compute, Ubuntu 24.04, 2 vCPU / 4 GB is plenty (no GPU needed).
+# Provision: Vultr Cloud Compute, Ubuntu 24.04, 1 vCPU / 2 GB is plenty (no GPU needed).
 ssh root@<VULTR_VM_IP>
 
-# Node 22 + pnpm
+# Node 22 + pnpm  (VERITAS needs Node >= 22.13 for node:sqlite)
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs
 npm i -g pnpm
 
-# Clone + install
+# Clone + install + generate the demo books
 git clone https://github.com/vidigoat/veritas.git && cd veritas
-pnpm install   # root package.json approves esbuild/sharp build scripts
-pnpm --filter @veritas/datagen generate            # build the demo company books
+pnpm install
+pnpm --filter @veritas/datagen corpus        # the 1,090-doc demo corpus
 
-# Configure — put your inference key in .env
+# Configure — your inference key
 echo "VULTR_INFERENCE_API_KEY=<your-key>" > .env
 
-# Run the forensic engine (Hono SSE server) on :8787
+# Build the console as a static bundle — the engine serves it at "/"
+cd web && pnpm build && cd ..
+
+# Run the engine (serves the API *and* the console on :8787)
 pnpm --filter @veritas/server start
 ```
 
-Run it under a process manager so it survives reboots:
+Run it under systemd so it survives reboots:
 
 ```ini
 # /etc/systemd/system/veritas.service
 [Unit]
-Description=VERITAS forensic engine
+Description=VERITAS forensic engine + console
 After=network.target
 [Service]
 WorkingDirectory=/root/veritas
@@ -54,23 +58,29 @@ WantedBy=multi-user.target
 
 ```bash
 systemctl enable --now veritas
-ufw allow 8787/tcp     # open the port (or front it with nginx + TLS)
+ufw allow 8787/tcp        # or front it with nginx on :80/:443
 ```
 
-## 3. Console (static frontend)
+**Updating a running deployment:**
 
 ```bash
-cd web
-STATIC_EXPORT=1 NEXT_PUBLIC_API_BASE=http://<VULTR_VM_IP>:8787 pnpm build
-# → web/out/  — upload to Vultr Object Storage / Cloudflare Pages / any static host
+cd /root/veritas && git pull && pnpm install \
+  && pnpm --filter @veritas/datagen corpus \
+  && (cd web && pnpm build) && systemctl restart veritas
 ```
 
-The public demo replays a bundled recording (`web/public/demo-run.json`) with **zero backend
-dependency**, so the demo URL works even if the engine is asleep. Add `?live=1` to run a live
-examination against the VM.
+## 3. Resilience & abuse guards (already built in)
+
+- **Demo replay fallback.** The console bundles a recording of a real run
+  (`web/public/demo-v2.json`). If the engine is unreachable, "Examine the demo company"
+  automatically replays it — the public URL can never show a dead demo.
+- **Live-run guards.** `/api/v2/run` is capped at 3 concurrent runs and 12 runs/IP/hour;
+  the fixture recorder is localhost-only; a global spend kill-switch stops all inference
+  at $150. A typical full examination costs ~$0.01.
 
 ## 4. Health check
 
 ```bash
-curl http://<VULTR_VM_IP>:8787/api/health      # {"ok":true}
+curl http://<VULTR_VM_IP>:8787/api/health      # {"ok":true,"runs":0}
+open http://<VULTR_VM_IP>:8787                 # the console
 ```

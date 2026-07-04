@@ -11,7 +11,7 @@
 import { chat } from "./llm.js";
 import { extractJson } from "./agents.js";
 
-export interface PanelVote { lens: string; upheld: boolean; confidence: number; reasoning: string }
+export interface PanelVote { lens: string; upheld: boolean; abstained?: boolean; confidence: number; reasoning: string }
 export interface PanelVerdict { upheld: boolean; votes: PanelVote[]; model: string; reasoning: string }
 
 const LENSES: { lens: string; system: string }[] = [
@@ -32,18 +32,24 @@ export async function nemotronPanel(finding: { statement: string; scheme?: strin
       const res = await chat("judge", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 400, noThink: true });
       const raw = (res.message.content ?? (res.message as any).reasoning ?? "").toString();
       const j = extractJson<any>(raw) ?? parseLoose(raw);
+      if (j.abstained) return { lens, upheld: false, abstained: true, confidence: 0, reasoning: "unparseable review — ABSTAINED" };
       return { lens, upheld: j.upheld !== false, confidence: clamp(j.confidence ?? 0.75), reasoning: String(j.reasoning ?? raw).replace(/\s+/g, " ").slice(0, 200) };
-    } catch { return { lens, upheld: true, confidence: 0.6, reasoning: "review unavailable — primary finding stands" }; }
+    } catch { return { lens, upheld: false, abstained: true, confidence: 0, reasoning: "reviewer unreachable — ABSTAINED (an abstention never upholds an accusation)" }; }
   }));
-  const up = votes.filter(v => v.upheld).length;
-  const upheld = up >= 2;
-  const lead = votes.find(v => v.upheld === upheld) ?? votes[0];
-  return { upheld, votes, model: "nvidia/Nemotron-Cascade-2-30B-A3B", reasoning: `${up}/${votes.length} examiners upheld — ${lead.reasoning}` };
+  // fail-SAFE: abstentions count for neither side. Upholding requires a majority
+  // of the reviewers who actually answered, and at least one real vote.
+  const answered = votes.filter(v => !v.abstained);
+  const up = answered.filter(v => v.upheld).length;
+  const upheld = answered.length > 0 && up * 2 > answered.length;
+  const lead = answered.find(v => v.upheld === upheld) ?? votes[0];
+  return { upheld, votes, model: "nvidia/Nemotron-Cascade-2-30B-A3B", reasoning: `${up}/${answered.length} examiners upheld${votes.length !== answered.length ? ` (${votes.length - answered.length} abstained)` : ""} — ${lead.reasoning}` };
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(1, Number(n) || 0));
 function parseLoose(raw: string) {
   const m = raw.match(/"?upheld"?\s*[:=]\s*(true|false)/i);
-  // fail-open: only an EXPLICIT "upheld": false refutes; missing/garbled output upholds the primary finding.
-  return { upheld: m ? m[1].toLowerCase() === "true" : true, confidence: 0.7, reasoning: raw };
+  // fail-SAFE: an explicit true/false counts; anything garbled is an abstention —
+  // a reviewer who cannot be understood never upholds an accusation.
+  if (!m) return { abstained: true };
+  return { upheld: m[1].toLowerCase() === "true", confidence: 0.7, reasoning: raw };
 }

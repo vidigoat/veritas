@@ -6,7 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "investigate": "tsx src/run-terminal.ts",
-    "test": "tsx src/tools.test.ts && tsx src/loop.test.ts"
+    "test": "tsx src/detect-test.ts"
   },
   "dependencies": {
     "@veritas/shared": "workspace:*",

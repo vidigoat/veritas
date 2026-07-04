@@ -8,13 +8,13 @@ html, body { height: 100%; }
 body {
   background: #FFFFFF;
   color: #111111;
-  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--font-body), "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-feature-settings: "tnum";
   font-size: 15px;
   line-height: 1.55;
 }
-.font-display { font-family: "Fraunces", Georgia, serif; }
-.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.font-display { font-family: var(--font-display), "Fraunces", Georgia, serif; }
+.mono { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 
 /* streaming caret */
 @keyframes blink { 50% { opacity: 0; } }

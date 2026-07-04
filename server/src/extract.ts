@@ -57,10 +57,11 @@ export async function augmentWithFleet(
   corpus: Corpus, store: Store,
   opts: { concurrency?: number; signal?: AbortSignal;
     onFleet?: (shards: number) => void; onDrone?: (i: number, docCount: number, found: number, ms: number) => void } = {},
-): Promise<{ shards: number; facts: number }> {
+): Promise<{ shards: number; facts: number; fleetFacts: number }> {
   const docs = corpus.order.map(id => corpus.docs.get(id)!);
   const shards = shard(docs, DOCS_PER_SHARD).slice(0, MAX_FLEET);
   opts.onFleet?.(shards.length);
+  let fleetFacts = 0; // what the drones THEMSELVES extracted (honest attribution)
   const results = await fanOut(shards, async (batch, i) => {
     const body = batch.map(d => `--- DOC ${d.docId} (${d.type}) ---\n${d.text.slice(0, PER_DOC_CHARS)}`).join("\n\n");
     const r = await subagent<Extracted>(EXTRACT_SYSTEM, `Documents in this batch:\n\n${body}`, {
@@ -71,12 +72,13 @@ export async function augmentWithFleet(
     concurrency: opts.concurrency ?? FLEET_CONCURRENCY,
     onDone: (i, out: Extracted) => {
       const n = (out.vendors?.length ?? 0) + (out.employees?.length ?? 0) + (out.transactions?.length ?? 0) + (out.payments?.length ?? 0) + (out.payroll?.length ?? 0);
+      fleetFacts += n;
       opts.onDrone?.(i, shards[i].length, n, 0);
     },
   });
   mergeInto(store, aggregate(results));
   const facts = store.vendors.size + store.employees.size + store.txns.length + store.payments.length + store.payroll.length;
-  return { shards: shards.length, facts };
+  return { shards: shards.length, facts, fleetFacts };
 }
 
 /** Convenience wrapper (parser + fleet, sequential) — kept for non-streaming callers. */
