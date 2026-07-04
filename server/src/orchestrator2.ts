@@ -50,7 +50,7 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   const brain = new CaseBrain();
   const pending: CaseEvent[] = [];
   const { store, shards, facts } = await extractCorpus(corpus, {
-    brain, concurrency: 14,
+    brain, concurrency: 5,
     onFleet: n => pending.push(mk("fleet_start", { shards: n, model: "NVIDIA Nemotron-Cascade-2" })),
     onDrone: (i, dc, found) => pending.push(mk("drone_done", { i, docs: dc, found })),
   });
@@ -72,42 +72,67 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   }
   if (!anomalies.length) yield out(mk("no_anomalies", {}));
 
-  // ── INVESTIGATE: a deep-dive per anomaly ──
+  // ── INVESTIGATE: a deep-dive per anomaly, ALL IN PARALLEL ──
+  //  The anomalies are independent, so we work them concurrently and stream each
+  //  worker's events through a small channel as soon as they are produced. Wall-
+  //  clock collapses from Σ(per-anomaly) to max(per-anomaly). Concurrency is
+  //  capped so we never overrun Vultr serverless (which degrades past ~5 calls).
   phase = "investigate";
   yield out(mk("phase", { phase, index: 4, of: 6, title: "Investigate" }));
   const findings: Finding[] = [];
   const cleared: Anomaly[] = [];
-  for (const a of anomalies) {
+  const top = anomalies.slice(0, 6);
+
+  // streaming channel: parallel workers push CaseEvents; the generator drains them
+  const chan: CaseEvent[] = [];
+  let wake: (() => void) | null = null;
+  const emit = (e: CaseEvent) => { out(e); chan.push(e); const w = wake; wake = null; w?.(); };
+  let fid = 0;
+
+  const investigateOne = async (a: Anomaly): Promise<void> => {
     const stepId = randomUUID().slice(0, 6);
-    yield out(mk("reasoning", { stepId, text: `Investigating: ${a.title}`, scheme: a.scheme }));
+    emit(mk("reasoning", { stepId, text: `Investigating: ${a.title}`, scheme: a.scheme }));
     // retrieve the source documents for this anomaly (VultronRetriever)
     const cand = corpusCandidates(corpus, a);
-    const ranked = await rerank(a.detail, cand, { topN: 5, tier: "prime" });
-    yield out(mk("retrieval", { stepId, model: "VultronRetriever Prime", query: a.title.slice(0, 60), candidates: cand.length, surfaced: ranked.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }));
+    let ranked: { docId: string; text: string; score: number }[];
+    try { ranked = await rerank(a.detail, cand, { topN: 5, tier: "prime" }); }
+    catch { ranked = cand.slice(0, 5).map(c => ({ docId: c.docId, text: c.text, score: 0 })); }
+    emit(mk("retrieval", { stepId, model: "VultronRetriever Prime", query: a.title.slice(0, 60), candidates: cand.length, surfaced: ranked.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }));
     const evidenceText = ranked.map(r => `--- ${r.docId} ---\n${r.text.slice(0, 1400)}`).join("\n\n");
-    const brief = `${schemePrompt(a.scheme)}\n\nFLAGGED ANOMALY: ${a.detail}\nSubjects: ${a.subjectIds.join(", ")}\n\nRETRIEVED SOURCE DOCUMENTS:\n${evidenceText}`;
-    const r = await subagent<any>(INVESTIGATE_SYSTEM, brief, { tier: "senior", maxTokens: 1200, expectKeys: ["verdict"] });
+    const dossier = `${schemePrompt(a.scheme)}\n\nFLAGGED ANOMALY: ${a.detail}\nSubjects: ${a.subjectIds.join(", ")}\n\nRETRIEVED SOURCE DOCUMENTS:\n${evidenceText}`;
+    const r = await subagent<any>(INVESTIGATE_SYSTEM, dossier, { tier: "senior", maxTokens: 1100, expectKeys: ["verdict"], timeoutMs: 45000 });
     const v = r.data ?? { verdict: a.strength >= 0.7 ? "confirmed" : "unproven", confidence: a.strength, statement: a.detail, evidence: [], reasoning: "analytics prior" };
-    yield out(mk("reasoning", { stepId, text: v.reasoning || v.statement, verdict: v.verdict }));
-    if (v.verdict === "cleared") { cleared.push(a); yield out(mk("cleared", { anomaly: a, why: v.reasoning })); continue; }
-    if (v.verdict !== "confirmed") { yield out(mk("unproven", { anomaly: a })); continue; }
+    emit(mk("reasoning", { stepId, text: v.reasoning || v.statement, verdict: v.verdict }));
+    if (v.verdict === "cleared") { cleared.push(a); emit(mk("cleared", { anomaly: a, why: v.reasoning })); return; }
+    if (v.verdict !== "confirmed") { emit(mk("unproven", { anomaly: a })); return; }
 
-    // ── VERIFY: Nemotron independent second examiner ──
+    // ── VERIFY: Nemotron independent second examiner (3 lenses, in parallel) ──
     const candidate = {
-      id: `F-${findings.length + 1}`, scheme: a.scheme, statement: v.statement || a.detail, amount: a.amount ?? 0,
+      id: `F-${++fid}`, scheme: a.scheme, statement: v.statement || a.detail, amount: a.amount ?? 0,
       evidence: (v.evidence?.length ? v.evidence : [{ claim: a.detail, doc_ids: a.proofDocs }]).map((e: any) => ({ claim: e.claim, doc_ids: e.docIds ?? e.doc_ids ?? a.proofDocs })),
       confidence: Math.max(v.confidence ?? a.strength, a.strength),
     };
-    yield out(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, lenses: ["correctness", "innocent explanation", "sufficiency"] }));
+    emit(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, lenses: ["correctness", "innocent explanation", "sufficiency"] }));
     const panel = await nemotronPanel(candidate as any);
-    yield out(mk("nemotron_panel", { finding: candidate.id, stepId, done: true, upheld: panel.upheld, votes: panel.votes, model: panel.model, summary: panel.upheld ? `✓ UPHELD by the Nemotron panel — ${panel.reasoning}` : `✗ REFUTED by the Nemotron panel — ${panel.reasoning}` }));
-    if (!panel.upheld) { cleared.push(a); continue; }
+    emit(mk("nemotron_panel", { finding: candidate.id, stepId, done: true, upheld: panel.upheld, votes: panel.votes, model: panel.model, summary: panel.upheld ? `✓ UPHELD by the Nemotron panel — ${panel.reasoning}` : `✗ REFUTED by the Nemotron panel — ${panel.reasoning}` }));
+    if (!panel.upheld) { cleared.push(a); return; }
     const finding: Finding = { ...candidate, verdict: "confirmed", nemotron: { upheld: true, reasoning: panel.reasoning, model: panel.model } as any,
       recommendedActions: recActions(a), evidence: candidate.evidence } as any;
     findings.push(finding);
-    yield out(mk("finding", { finding }));
-    if (a.scheme === "shell_company" || a.scheme === "ghost_employee") yield out(mk("freeze_request", { target: a.subjectIds[0] }));
+    emit(mk("finding", { finding }));
+    if (a.scheme === "shell_company" || a.scheme === "ghost_employee") emit(mk("freeze_request", { target: a.subjectIds[0] }));
+  };
+
+  // launch the fleet of investigators (bounded), drain the channel as events land
+  let settled = false;
+  const investigations = fanOut(top, a => investigateOne(a), { concurrency: 3 })
+    .then(() => { settled = true; const w = wake; wake = null; w?.(); });
+  while (true) {
+    if (chan.length) { yield chan.shift()!; continue; }
+    if (settled) break;
+    await new Promise<void>(res => { wake = res; });
   }
+  await investigations;
 
   // ── REPORT ──
   phase = "report";

@@ -101,7 +101,12 @@ export function useCorpus() {
     } catch { runLive("demo"); }
   }, [runLive]);
 
+  const docBundle = useRef<Record<string, { type: string; text: string }> | null>(null);
   const openDoc = useCallback(async (docId: string): Promise<{ docId: string; type: string; text: string } | null> => {
+    // demo mode: read the bundled corpus (no backend needed)
+    if (!docBundle.current) { try { docBundle.current = await fetch("/demo-docs.json").then(r => r.json()); } catch { docBundle.current = {}; } }
+    const b = docBundle.current?.[docId] ?? docBundle.current?.[docId.toUpperCase()];
+    if (b) return { docId, type: b.type, text: b.text };
     const cid = caseId.current ?? "demo";
     return fetch(`${API}/api/v2/doc/${cid}/${encodeURIComponent(docId)}`).then(r => r.ok ? r.json() : null).catch(() => null);
   }, []);

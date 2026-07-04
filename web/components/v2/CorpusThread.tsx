@@ -98,7 +98,7 @@ function FindingCard({ f, onOpenDoc }: { f: any; onOpenDoc: (id: string) => void
     <div className="mt-2 rounded-card border border-crimson/25 bg-white shadow-card scalein">
       <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-crimson border-b border-crimson/15 bg-crimson-pale flex items-center gap-1.5"><ShieldCheck size={13} weight="fill" /> {SCHEME_LABEL[f.scheme] ?? "Finding"} · {f.id}</div>
       <div className="p-4">
-        <div className="flex items-baseline gap-3"><div className="mono text-[24px] font-semibold text-crimson leading-none">${Math.round(f.amount).toLocaleString()}</div><div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence</div></div>
+        <div className="flex items-baseline gap-3"><div className="mono text-[24px] font-semibold text-crimson leading-none">€{Math.round(f.amount).toLocaleString()}</div><div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence</div></div>
         <div className="text-[14.5px] leading-relaxed text-ink mt-2.5">{f.statement}</div>
         <div className="mt-3 space-y-1.5">{(f.evidence ?? []).slice(0, 5).map((e: any, i: number) => <div key={i} className="text-[13px] text-ink-70 flex gap-2"><span className="text-crimson mt-px">▸</span><span>{e.claim} {(e.doc_ids ?? e.docIds ?? []).map((d: string) => <DocChip key={d} id={d} onOpen={onOpenDoc} inline />)}</span></div>)}</div>
       </div>
@@ -112,7 +112,7 @@ function VerdictCard({ state }: { state: CorpusState }) {
     <div className="mt-3 rounded-card border border-crimson/30 bg-white shadow-card scalein">
       <div className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-crimson border-b border-crimson/15 bg-crimson-pale">Verdict</div>
       <div className="p-4 flex items-baseline gap-4">
-        <div className="mono text-[28px] font-semibold text-crimson leading-none">${Math.round(total).toLocaleString()}</div>
+        <div className="mono text-[28px] font-semibold text-crimson leading-none">€{Math.round(total).toLocaleString()}</div>
         <div className="text-[13px] text-ink-50">total at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared · each upheld by the Nemotron panel</div>
       </div>
     </div>

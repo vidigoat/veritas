@@ -1,7 +1,7 @@
 /**
- * VERITAS demo corpus generator — "Northwind Trading Co Pvt Ltd" (FY 2025-26).
+ * VERITAS demo corpus generator — "Northwind Trading Co SAS" (FY 2025-26).
  *
- * One mid-size Indian import/distribution company's books, as a folder of
+ * One mid-size European import/distribution company's books, as a folder of
  * individual .txt documents an auditor would actually receive. Reading the
  * documents (and cross-referencing them) surfaces the planted fraud; nothing
  * in the readable corpus is ever labelled "fraud".
@@ -12,15 +12,15 @@
  *
  * PLANTED SCHEMES (ground truth in manifest.json only):
  *   1. SHELL COMPANY   V-031 "Apex Supplies"  — reg address == E-007 home
- *      address; no GSTIN; 14 sequential vague invoices; no POs; every one
- *      approved by E-007 (Vikram Kulkarni); amounts hug the Rs 25,000 threshold.
+ *      address; no VAT number; 14 sequential vague invoices; no POs; every one
+ *      approved by E-007 (Vikram Kulkarni); amounts hug the €25,000 threshold.
  *   2. GHOST EMPLOYEE  E-015 "Deepak Verma"    — salary account IDENTICAL to
  *      E-007's; joined weeks ago; no email / approvals / other footprint.
  *   3. DUPLICATE PAYMENT (real loss) — a legit invoice paid twice, never
  *      reversed. Money gone.
  * RED HERRINGS (legit, must be clearable):
  *   4. A duplicate that WAS caught and reversed by credit note 3 days later.
- *   5. A Rs 250,000 round CAPEX that LOOKS suspicious but has PO-77001 + board
+ *   5. A €250,000 round CAPEX that LOOKS suspicious but has PO-77001 + board
  *      minute authorisation.
  *
  * Usage:  npx tsx datagen/src/corpus.ts
@@ -55,7 +55,7 @@ type Rng = ReturnType<typeof makeRng>;
  * Formatting helpers.
  * ----------------------------------------------------------------------- */
 const rupee = (n: number) =>
-  "Rs " + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  "€" + Math.abs(n).toLocaleString("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const rule = (c = "=", n = 68) => c.repeat(n);
 const pad = (s: string, w: number) => (s.length >= w ? s : s + " ".repeat(w - s.length));
 const padL = (s: string, w: number) => (s.length >= w ? s : " ".repeat(w - s.length) + s);
@@ -77,13 +77,13 @@ const longDate = (iso: string) => {
  * The company.
  * ----------------------------------------------------------------------- */
 const CO = {
-  name: "Northwind Trading Co Pvt Ltd",
-  addr: "Plot 14, MIDC Industrial Area, Andheri East, Mumbai 400093",
-  gstin: "27AABCN4521Q1ZP",
-  cin: "U51909MH2016PTC287654",
-  bankName: "ICICI Bank Ltd, Andheri East Branch",
-  bankAcc: "ICICI Current A/C ****8842",
-  ifsc: "ICIC0000142",
+  name: "Northwind Trading Co SAS",
+  addr: "14 Rue du Commerce, 75015 Paris, France",
+  gstin: "FR27512094521",
+  cin: "RCS Paris 812 094 521",
+  bankName: "BNP Paribas, Paris Opéra Branch",
+  bankAcc: "BNP Paribas Current A/C ****8842",
+  ifsc: "BNPAFRPPXXX",
 };
 const APPROVAL_THRESHOLD = 25000; // single-approver limit; anything >= needs Finance Controller co-sign
 
@@ -91,31 +91,31 @@ const APPROVAL_THRESHOLD = 25000; // single-approver limit; anything >= needs Fi
  * Reference pools.
  * ----------------------------------------------------------------------- */
 const CITIES: { city: string; state: string; code: string }[] = [
-  { city: "Mumbai 400001", state: "Maharashtra", code: "27" },
-  { city: "Mumbai 400050", state: "Maharashtra", code: "27" },
-  { city: "Mumbai 400069", state: "Maharashtra", code: "27" },
-  { city: "Mumbai 400093", state: "Maharashtra", code: "27" },
-  { city: "Thane 400601", state: "Maharashtra", code: "27" },
-  { city: "Navi Mumbai 400703", state: "Maharashtra", code: "27" },
-  { city: "Pune 411001", state: "Maharashtra", code: "27" },
-  { city: "Pune 411014", state: "Maharashtra", code: "27" },
-  { city: "Nashik 422001", state: "Maharashtra", code: "27" },
-  { city: "Ahmedabad 380009", state: "Gujarat", code: "24" },
-  { city: "Surat 395003", state: "Gujarat", code: "24" },
-  { city: "New Delhi 110020", state: "Delhi", code: "07" },
-  { city: "Bengaluru 560068", state: "Karnataka", code: "29" },
-  { city: "Chennai 600032", state: "Tamil Nadu", code: "33" },
+  { city: "Paris 75001", state: "Île-de-France", code: "27" },
+  { city: "Paris 75008", state: "Île-de-France", code: "27" },
+  { city: "Paris 75016", state: "Île-de-France", code: "27" },
+  { city: "Paris 75009", state: "Île-de-France", code: "27" },
+  { city: "Boulogne-Billancourt 92100", state: "Île-de-France", code: "27" },
+  { city: "Nanterre 92000", state: "Île-de-France", code: "27" },
+  { city: "Lyon 69002", state: "Auvergne-Rhône-Alpes", code: "27" },
+  { city: "Lyon 69003", state: "Auvergne-Rhône-Alpes", code: "27" },
+  { city: "Marseille 13008", state: "Provence-Alpes-Côte d'Azur", code: "27" },
+  { city: "Berlin 10115", state: "Berlin", code: "24" },
+  { city: "Frankfurt 60311", state: "Hesse", code: "24" },
+  { city: "Amsterdam 1011", state: "Noord-Holland", code: "07" },
+  { city: "Madrid 28001", state: "Comunidad de Madrid", code: "29" },
+  { city: "Milan 20121", state: "Lombardia", code: "33" },
 ];
 const STREETS = [
-  "MG Road", "Linking Road", "SV Road", "Hill Road", "Carter Road", "Juhu Tara Road",
-  "Andheri Kurla Road", "Palm Beach Road", "Sion Trombay Road", "Ghodbunder Road",
-  "FC Road", "JM Road", "Senapati Bapat Road", "Turbhe MIDC Road", "Marol Naka",
-  "Saki Vihar Road", "Veera Desai Road", "SB Marg", "Dr Ambedkar Road", "Station Road",
+  "Rue de la Paix", "Avenue Montaigne", "Boulevard Haussmann", "Rue de Rivoli", "Avenue Kléber", "Rue Saint-Honoré",
+  "Boulevard Saint-Germain", "Avenue de la République", "Rue du Faubourg", "Quai de la Loire",
+  "Rue Lafayette", "Avenue Foch", "Boulevard Voltaire", "Rue de Vaugirard", "Place Vendôme",
+  "Rue de Sèvres", "Avenue Victor Hugo", "Rue Oberkampf", "Boulevard Magenta", "Rue de la Gare",
 ];
 const CUSTOMERS = [
-  "Greenfield Retail Pvt Ltd", "Sahyadri Distributors", "Blue Ocean Mart",
-  "Coastal Wholesale Co", "Deccan Superstores", "Metro Bazaar India",
-  "Konkan Trade Links", "Western Supply Chain Ltd",
+  "Greenfield Retail SARL", "Rhône Distribution SA", "Blue Ocean Mart BV",
+  "Coastal Wholesale GmbH", "Continental Superstores", "Metro Bazaar Europe",
+  "Iberia Trade Links SL", "Western Supply Chain Ltd",
 ];
 
 /* vendor name parts + per-category catalogue of realistic line items */
@@ -140,8 +140,8 @@ const CATEGORIES: Category[] = [
     { desc: "Bubble wrap roll 1m x 100m", unit: "rolls", lo: 240, hi: 460 },
   ]},
   { name: "Freight & Logistics", items: [
-    { desc: "FTL road freight Mumbai-Delhi (32ft MXL)", unit: "trip", lo: 38000, hi: 62000 },
-    { desc: "Container haulage JNPT-warehouse (20ft)", unit: "trip", lo: 9500, hi: 14500 },
+    { desc: "FTL road freight Paris-Berlin (13.6m tautliner)", unit: "trip", lo: 38000, hi: 62000 },
+    { desc: "Container haulage Le Havre-warehouse (20ft)", unit: "trip", lo: 9500, hi: 14500 },
     { desc: "Warehouse-to-DC last mile (per shipment)", unit: "shipment", lo: 2400, hi: 5200 },
     { desc: "CFS handling & destuffing charges", unit: "container", lo: 6800, hi: 11200 },
     { desc: "Detention / demurrage recovery", unit: "days", lo: 3200, hi: 6400 },
@@ -184,14 +184,15 @@ const CATEGORIES: Category[] = [
 ];
 
 /* ----------------------------------------------------------------------- *
- * GSTIN generator (15 chars: SS + PAN(AAAAA9999A) + entity + 'Z' + check).
+ * EU VAT number generator ("FR" + 11 digits). Consumes the same number of
+ * RNG draws as the previous generator so the deterministic corpus stays stable.
  * ----------------------------------------------------------------------- */
-function makeGstin(rng: Rng, stateCode: string): string {
-  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+function makeVat(rng: Rng, _stateCode: string): string {
   const D = "0123456789";
   const ch = (s: string) => s[Math.floor(rng.next() * s.length)];
-  const pan = ch(L) + ch(L) + ch(L) + ch(L) + ch(L) + ch(D) + ch(D) + ch(D) + ch(D) + ch(L);
-  return stateCode + pan + String(rng.int(1, 9)) + "Z" + ch(L + D);
+  let out = "";
+  for (let i = 0; i < 12; i++) out += ch(D); // 12 draws -> RNG sequence parity with the old GSTIN generator
+  return "FR" + out.slice(0, 11);
 }
 
 /* ----------------------------------------------------------------------- *
@@ -210,8 +211,8 @@ interface Vendor {
 
 /* THE fraudster's home address and salary account - reused verbatim so that
  * exact-string cross-referencing works. */
-const FRAUDSTER_HOME = "245 LBS Marg, Mumbai 400050";
-const FRAUDSTER_ACCOUNT = "HDFC Bank A/C ****7731";
+const FRAUDSTER_HOME = "245 Avenue des Champs-Élysées, Paris 75008";
+const FRAUDSTER_ACCOUNT = "BNP Paribas A/C ****7731";
 
 function makeEmployees(rng: Rng): Employee[] {
   const dir: Omit<Employee, "home" | "account" | "email">[] = [
@@ -236,7 +237,7 @@ function makeEmployees(rng: Rng): Employee[] {
   ];
   const usedAcc = new Set<string>([FRAUDSTER_ACCOUNT]);
   const usedHome = new Set<string>([FRAUDSTER_HOME]);
-  const banks = ["HDFC Bank", "ICICI Bank", "Axis Bank", "Kotak Mahindra Bank", "SBI", "Yes Bank"];
+  const banks = ["BNP Paribas", "Société Générale", "Crédit Agricole", "ING", "Deutsche Bank", "Santander", "KBC Bank", "UniCredit", "Rabobank", "BBVA"];
   return dir.map((e) => {
     let home: string;
     if (e.fraudster) home = FRAUDSTER_HOME;
@@ -253,15 +254,15 @@ function makeEmployees(rng: Rng): Employee[] {
 }
 
 function makeVendors(rng: Rng, e007: Employee): Vendor[] {
-  const usedName = new Set<string>();
+  const usedName = new Set<string>(["Apex Supplies"]); // reserve the shell name so no honest vendor collides
   const usedAcc = new Set<string>();
-  const banks = ["HDFC Bank", "ICICI Bank", "Axis Bank", "Kotak Mahindra Bank", "State Bank of India",
-    "Bank of Baroda", "Union Bank", "IDFC First Bank", "Punjab National Bank", "Canara Bank"];
+  const banks = ["BNP Paribas", "Société Générale", "Crédit Agricole", "ING", "Deutsche Bank",
+    "Santander", "KBC Bank", "UniCredit", "Rabobank", "BBVA"];
   const firsts = ["Ramesh", "Suresh", "Nitin", "Kiran", "Manoj", "Deepa", "Anil", "Vijay", "Sunita", "Prakash", "Harish", "Neha"];
   const lasts = ["Shah", "Agarwal", "Naik", "Pillai", "Kamath", "Bhatt", "Shetty", "Kadam", "Wagh", "Pawar", "Jain", "Fernandes"];
 
   const vendors: Vendor[] = [];
-  for (let i = 1; i <= 46; i++) {
+  for (let i = 1; i <= 110; i++) {
     const id = `V-${String(i).padStart(3, "0")}`;
     if (i === 31) continue; // shell inserted separately below
     let name = "";
@@ -275,11 +276,11 @@ function makeVendors(rng: Rng, e007: Employee): Vendor[] {
       id, name,
       addr: `${rng.int(1, 340)} ${rng.pick(STREETS)}, ${loc.city}`,
       city: loc.city, state: loc.state, stateCode: loc.code,
-      gstin: makeGstin(rng, loc.code),
+      gstin: makeVat(rng, loc.code),
       account, category: rng.pick(CATEGORIES).name,
       onboarded: `20${rng.int(17, 24)}-${String(rng.int(1, 12)).padStart(2, "0")}-${String(rng.int(1, 28)).padStart(2, "0")}`,
       contact: `${rng.pick(firsts)} ${rng.pick(lasts)}`,
-      phone: `+91 ${rng.int(70, 99)}${rng.int(10, 99)} ${rng.int(100000, 999999)}`,
+      phone: `+33 ${rng.int(70, 99)}${rng.int(10, 99)} ${rng.int(100000, 999999)}`,
     });
   }
   // ---- V-031 "Apex Supplies": THE SHELL ----------------------------------
@@ -287,13 +288,13 @@ function makeVendors(rng: Rng, e007: Employee): Vendor[] {
     id: "V-031",
     name: "Apex Supplies",
     addr: e007.home,             // EXACT match to E-007's home address
-    city: "Mumbai 400050", state: "Maharashtra", stateCode: "27",
+    city: "Paris 75008", state: "Île-de-France", stateCode: "27",
     gstin: null,                 // no tax registration on file - the tell
-    account: `Kotak Mahindra Bank ****${rng.int(1000, 9999)}`,
+    account: `Société Générale ****${rng.int(1000, 9999)}`,
     category: "Professional Services",
     onboarded: "2025-04-10",
     contact: "V. Kulkarni",
-    phone: `+91 98${rng.int(10, 99)} ${rng.int(100000, 999999)}`,
+    phone: `+33 98${rng.int(10, 99)} ${rng.int(100000, 999999)}`,
     shell: true,
   };
   vendors.push(shell);
@@ -353,8 +354,8 @@ function buildLineItems(rng: Rng, cat: Category, targetSubtotal: number): LineIt
 
 function priceInvoice(items: LineItem[], igst: boolean): Pick<Invoice, "subtotal" | "gstRate" | "gst" | "total"> {
   const subtotal = Math.round(items.reduce((a, b) => a + b.amount, 0) * 100) / 100;
-  const gstRate = 18;
-  const gst = Math.round(subtotal * 0.18 * 100) / 100;
+  const gstRate = 20;
+  const gst = Math.round(subtotal * 0.20 * 100) / 100;
   const total = Math.round((subtotal + gst) * 100) / 100;
   return { subtotal, gstRate, gst, total };
 }
@@ -419,7 +420,7 @@ function buildBooks(rng: Rng, vendors: Vendor[], employees: Employee[]) {
   for (const v of vendors) {
     if (v.shell || v.id === "V-020") continue;
     const cat = catByName.get(v.category)!;
-    const count = rng.int(5, 8);
+    const count = rng.int(6, 10);
     for (let k = 0; k < count; k++) {
       const month = rng.pick(FY_MONTHS);
       const subtotal = rng.amount(4000, 180000);
@@ -473,12 +474,12 @@ function buildBooks(rng: Rng, vendors: Vendor[], employees: Employee[]) {
   {
     const igst = dupRealVendor.stateCode !== "27";
     // clean round total 87,400 for a spottable duplicate; single consistent line
-    const subtotal = Math.round((87400 / 1.18) * 100) / 100;
+    const subtotal = Math.round((87400 / 1.20) * 100) / 100;
     const it = rng.pick(catByName.get(dupRealVendor.category)!.items);
     const only = [{ desc: it.desc, qty: 1, unit: "lot", rate: subtotal, amount: subtotal }];
-    const gst = Math.round(subtotal * 0.18 * 100) / 100;
+    const gst = Math.round(subtotal * 0.20 * 100) / 100;
     invoices.push({
-      vendorId: "V-018", date: "2025-11-06", items: only, subtotal, gstRate: 18, gst, igst, total: 87400,
+      vendorId: "V-018", date: "2025-11-06", items: only, subtotal, gstRate: 20, gst, igst, total: 87400,
       po: `PO-${rng.int(50000, 69999)}`, approver: "E-008",
       vendorRef: `${dupRealVendor.name.split(" ")[0].toUpperCase()}/25-26/${rng.int(100, 999)}`,
       category: dupRealVendor.category, tag: "dup_real",
@@ -488,13 +489,13 @@ function buildBooks(rng: Rng, vendors: Vendor[], employees: Employee[]) {
   /* --- Herring 4: duplicate that WAS reversed via credit note 3 days on --- */
   const dupRevVendor = byId.get("V-006")!;
   {
-    const subtotal = Math.round((54200 / 1.18) * 100) / 100;
+    const subtotal = Math.round((54200 / 1.20) * 100) / 100;
     const cat = catByName.get(dupRevVendor.category)!;
     const item = rng.pick(cat.items);
     const only = [{ desc: item.desc, qty: Math.max(1, Math.round(subtotal / ((item.lo + item.hi) / 2))), unit: item.unit, rate: Math.round(((item.lo + item.hi) / 2) * 100) / 100, amount: subtotal }];
-    const gst = Math.round(subtotal * 0.18 * 100) / 100;
+    const gst = Math.round(subtotal * 0.20 * 100) / 100;
     invoices.push({
-      vendorId: "V-006", date: "2025-07-04", items: only, subtotal, gstRate: 18, gst, igst: dupRevVendor.stateCode !== "27", total: 54200,
+      vendorId: "V-006", date: "2025-07-04", items: only, subtotal, gstRate: 20, gst, igst: dupRevVendor.stateCode !== "27", total: 54200,
       po: `PO-${rng.int(50000, 69999)}`, approver: "E-008",
       vendorRef: `${dupRevVendor.name.split(" ")[0].toUpperCase()}/25-26/${rng.int(100, 999)}`,
       category: dupRevVendor.category, tag: "dup_reversed",
@@ -556,7 +557,7 @@ function buildCash(rng: Rng, invoices: Invoice[], employees: Employee[], byId: M
     const total = active.reduce((a, e) => a + e.salary, 0);
     payrollByMonth[month] = { rows: active, total };
     events.push({ date: `${month}-27`, type: "DR", amount: total, desc: `Salary disbursement - payroll (${active.length} staff)`, ref: `PAYROLL-${month}` });
-    events.push({ date: `${month}-04`, type: "DR", amount: 165000, desc: "Office & warehouse rent - Andheri MIDC", ref: "RENT" });
+    events.push({ date: `${month}-04`, type: "DR", amount: 165000, desc: "Office & warehouse rent - Paris HQ", ref: "RENT" });
     events.push({ date: `${month}-${String(rng.int(9, 18)).padStart(2, "0")}`, type: "DR", amount: rng.amount(28000, 46000), desc: "Electricity, water & internet - utilities", ref: "UTIL" });
   }
 
@@ -583,7 +584,7 @@ function rInvoice(inv: Invoice, v: Vendor): string {
   const L: string[] = [];
   L.push(v.name.toUpperCase());
   L.push(v.addr);
-  L.push(v.gstin ? `GSTIN: ${v.gstin}` : `GSTIN: [NOT PROVIDED]`);
+  L.push(v.gstin ? `VAT No: ${v.gstin}` : `VAT No: [NOT PROVIDED]`);
   L.push(`Contact: ${v.contact}   ${v.phone}`);
   L.push(rule("="));
   L.push(pad("TAX INVOICE", 44) + `Invoice No: ${inv.vendorRef}`);
@@ -592,7 +593,7 @@ function rInvoice(inv: Invoice, v: Vendor): string {
   L.push("Bill To:");
   L.push(`  ${CO.name}`);
   L.push(`  ${CO.addr}`);
-  L.push(`  GSTIN: ${CO.gstin}`);
+  L.push(`  VAT No: ${CO.gstin}`);
   L.push("");
   L.push(pad("#", 4) + pad("Description", 44) + pad("Qty", 8) + pad("Unit", 7) + pad("Rate", 14) + "Amount");
   L.push(rule("-"));
@@ -602,19 +603,15 @@ function rInvoice(inv: Invoice, v: Vendor): string {
   L.push(rule("-"));
   L.push(padL("Subtotal:", 72) + "  " + padL(rupee(inv.subtotal), 16));
   if (inv.gst === 0) {
-    L.push(padL("GST:", 72) + "  " + padL("Not applicable (vendor unregistered)", 16));
-  } else if (inv.igst) {
-    L.push(padL(`IGST @ ${inv.gstRate}%:`, 72) + "  " + padL(rupee(inv.gst), 16));
+    L.push(padL("VAT:", 72) + "  " + padL("Not applicable (vendor unregistered)", 16));
   } else {
-    const half = Math.round((inv.gst / 2) * 100) / 100;
-    L.push(padL(`CGST @ ${inv.gstRate / 2}%:`, 72) + "  " + padL(rupee(half), 16));
-    L.push(padL(`SGST @ ${inv.gstRate / 2}%:`, 72) + "  " + padL(rupee(inv.gst - half), 16));
+    L.push(padL(`VAT @ ${inv.gstRate}%:`, 72) + "  " + padL(rupee(inv.gst), 16));
   }
   L.push(padL("TOTAL PAYABLE:", 72) + "  " + padL(rupee(inv.total), 16));
   L.push(rule("="));
   L.push(`Purchase Order Ref: ${inv.po ?? "- (none on file)"}`);
   L.push(`Payment Terms: Net ${[15, 30, 45][(inv.total | 0) % 3]}`);
-  L.push(`Vendor Bank: ${v.account}    IFSC on file`);
+  L.push(`Vendor Bank: ${v.account}    IBAN on file`);
   L.push(`Approved for payment by: ${inv.approver} (${nameOf(inv.approver)})`);
   return L.join("\n");
 }
@@ -628,8 +625,8 @@ function rVendorReg(v: Vendor): string {
     `Registered Name    : ${v.name}`,
     `Registered Address : ${v.addr}`,
     `State / State Code : ${v.state} / ${v.stateCode}`,
-    `GSTIN              : ${v.gstin ?? "[NOT PROVIDED]"}`,
-    `PAN                : ${v.gstin ? v.gstin.slice(2, 12) : "[NOT PROVIDED]"}`,
+    `VAT No             : ${v.gstin ?? "[NOT PROVIDED]"}`,
+    `Reg No             : ${v.gstin ? v.gstin.slice(2) : "[NOT PROVIDED]"}`,
     `Bank Account       : ${v.account}`,
     `Category           : ${v.category}`,
     `Onboarded          : ${longDate(v.onboarded)}`,
@@ -662,7 +659,7 @@ function rEmployee(e: Employee): string {
 
 function rPurchaseOrder(po: PurchaseOrder, v: Vendor): string {
   const value = po.value;
-  const gst = Math.round(value * 0.18 * 100) / 100;
+  const gst = Math.round(value * 0.20 * 100) / 100;
   return [
     `${CO.name}`,
     `${CO.addr}`,
@@ -672,14 +669,14 @@ function rPurchaseOrder(po: PurchaseOrder, v: Vendor): string {
     ``,
     `Vendor    : ${v.name} (${v.id})`,
     `Address   : ${v.addr}`,
-    `GSTIN     : ${v.gstin ?? "[NOT PROVIDED]"}`,
+    `VAT No    : ${v.gstin ?? "[NOT PROVIDED]"}`,
     ``,
     pad("Description", 50) + pad("Qty", 8) + pad("Unit", 8) + "Rate",
     rule("-"),
     pad(po.desc.slice(0, 49), 50) + pad(String(po.qty), 8) + pad(po.unit, 8) + rupee(po.rate),
     rule("-"),
-    padL(`Order Value (ex-GST): ${rupee(value)}`, 60),
-    padL(`Est. GST @ 18%      : ${rupee(gst)}`, 60),
+    padL(`Order Value (ex-VAT): ${rupee(value)}`, 60),
+    padL(`Est. VAT @ 20%      : ${rupee(gst)}`, 60),
     padL(`Est. Total          : ${rupee(value + gst)}`, 60),
     rule("="),
     `Authorised by: ${po.approver} (${nameOf(po.approver)})`,
@@ -693,7 +690,7 @@ function rBankStatement(month: string, events: CashEvent[], opening: number): { 
   L.push(`${CO.name}`);
   L.push(`${CO.bankName}`);
   L.push(`Statement of Account - ${MONTH_NAME[month.slice(5)]} ${month.slice(0, 4)}`);
-  L.push(`Account: ${CO.bankAcc}    IFSC: ${CO.ifsc}`);
+  L.push(`Account: ${CO.bankAcc}    BIC: ${CO.ifsc}`);
   L.push(rule("="));
   L.push(pad("Date", 12) + pad("Ref", 14) + pad("Description", 42) + pad("Debit", 15) + pad("Credit", 15) + "Balance");
   L.push(rule("-"));
@@ -738,7 +735,7 @@ function rCreditNote(id: string, date: string, vendor: Vendor, amount: number, r
     pad(`Credit Note No: ${id}`, 44) + `Date: ${longDate(date)}`,
     ``,
     `Vendor   : ${vendor.name} (${vendor.id})`,
-    `GSTIN    : ${vendor.gstin ?? "[NOT PROVIDED]"}`,
+    `VAT No   : ${vendor.gstin ?? "[NOT PROVIDED]"}`,
     `Reference: ${ref}`,
     ``,
     `Amount Credited: ${rupee(amount)}`,
@@ -755,7 +752,7 @@ function rBoardMinutes(doc: { file: string; date: string; title: string; body: s
     `${CO.addr}`,
     rule("="),
     `Reference: ${doc.file}`,
-    `Date: ${longDate(doc.date)}    Venue: Registered Office, Andheri East`,
+    `Date: ${longDate(doc.date)}    Venue: Registered Office, Paris`,
     `Present: Sneha Iyer (Managing Director, Chair), Aditya Deshpande (Finance`,
     `         Controller), Rohan Sharma (Operations Head), and directors.`,
     rule("-"),
@@ -812,18 +809,18 @@ function main() {
   const boards: { file: string; date: string; title: string; body: string[] }[] = [
     { file: "BOARD-MINUTES-2025-04", date: "2025-04-08", title: "1. Approval of Annual Operating Plan FY 2025-26", body: [
       "The Board reviewed and approved the annual operating plan and procurement",
-      "budget of Rs 4.20 crore for FY 2025-26. The single-signature payment approval",
+      "budget of €4.2 million for FY 2025-26. The single-signature payment approval",
       `limit for managers was reaffirmed at ${rupee(APPROVAL_THRESHOLD)}; amounts at or above this`,
       "threshold require co-signature by the Finance Controller."] },
     { file: "BOARD-MINUTES-2025-05", date: "2025-05-14", title: "2. Banking Resolution", body: [
-      "RESOLVED that the ICICI Bank current account (****8842) continue as the",
-      "principal operating account. Cheque / NEFT signatories: Managing Director and",
-      "Finance Controller jointly for amounts above Rs 1,00,000."] },
+      "RESOLVED that the BNP Paribas current account (****8842) continue as the",
+      "principal operating account. Cheque / SEPA signatories: Managing Director and",
+      "Finance Controller jointly for amounts above €100,000."] },
     { file: "BOARD-MINUTES-2025-06", date: "2025-06-11", title: "3. Warehouse Lease Renewal", body: [
-      "The Andheri MIDC warehouse & office lease was renewed for 24 months at a",
-      "monthly rent of Rs 1,65,000. Operations Head authorised to execute the deed."] },
+      "The Paris warehouse & office lease was renewed for 24 months at a",
+      "monthly rent of €165,000. Operations Head authorised to execute the deed."] },
     { file: "BOARD-MINUTES-2025-07", date: "2025-07-16", title: "4. Q1 Review", body: [
-      "Q1 FY26 revenue of Rs 3.1 crore noted, marginally ahead of plan. The Finance",
+      "Q1 FY26 revenue of €3.1 million noted, marginally ahead of plan. The Finance",
       "Controller reported a duplicate vendor payment caught in weekly reconciliation",
       "and reversed via credit note; controls deemed adequate."] },
     { file: "BOARD-MINUTES-2025-08", date: "2025-08-20", title: "5. Capital Expenditure - Packaging Line Upgrade", body: [
@@ -838,7 +835,7 @@ function main() {
       "The Board noted the reforecast for H2 FY26 and approved backfilling two",
       "operations roles. HR to complete onboarding documentation for new joiners."] },
     { file: "BOARD-MINUTES-2026-03", date: "2026-03-24", title: "8. Year-End & Statutory Audit Appointment", body: [
-      "The Board resolved to appoint M/s Rane & Associates, Chartered Accountants,",
+      "The Board resolved to appoint Dubois & Associés, Statutory Auditors,",
       "for the FY 2025-26 statutory audit and directed management to prepare books",
       "for review."] },
   ];
@@ -872,10 +869,10 @@ function main() {
         proofDocs: ["VENDOR-V031-registration.txt", "HR-E007-record.txt", ...shellVouchers.map((v) => `${v}.txt`)],
         exactMatchProofs: [
           { claim: "shell vendor registered address == employee E-007 home address", string: FRAUDSTER_HOME, appearsIn: ["VENDOR-V031-registration.txt", "HR-E007-record.txt"] },
-          { claim: "shell vendor has no GSTIN", string: "GSTIN: [NOT PROVIDED]", appearsIn: ["VENDOR-V031-registration.txt"] },
+          { claim: "shell vendor has no VAT number", string: "VAT No             : [NOT PROVIDED]", appearsIn: ["VENDOR-V031-registration.txt"] },
           { claim: "every shell invoice approved by E-007", string: "Approved for payment by: E-007 (Vikram Kulkarni)", appearsIn: shellVouchers.map((v) => `${v}.txt`) },
         ],
-        tells: ["reg address == E-007 home", "no GSTIN", "zero POs on any invoice", "single approver E-007", "sequential vendor invoice numbers APEX/25-26/041..054", "amounts hug the Rs 25,000 single-approver threshold", "vague 'consulting & procurement support'"],
+        tells: ["reg address == E-007 home", "no VAT number", "zero POs on any invoice", "single approver E-007", "sequential vendor invoice numbers APEX/25-26/041..054", "amounts hug the €25,000 single-approver threshold", "vague 'consulting & procurement support'"],
       },
       {
         id: "scheme_2_ghost_employee",
@@ -922,7 +919,7 @@ function main() {
         entities: { vendorId: "V-020", vendorName: capexVendorName },
         amount: 250000,
         clearingDocs: ["PO-77001.txt", "BOARD-MINUTES-2025-08.txt"],
-        explanation: "Large round Rs 2,50,000 to a legit vendor, but backed by PO-77001 and explicitly authorised in the August 2025 board minutes.",
+        explanation: "Large round €250,000 to a legit vendor, but backed by PO-77001 and explicitly authorised in the August 2025 board minutes.",
       },
     ],
   };

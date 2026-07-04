@@ -49,16 +49,22 @@ export async function extractCorpus(
   //    finds (AI coverage for messy/unknown formats). Best-effort: if the fleet
   //    is slow or a drone times out, the parsed facts already stand.
   const docs = corpus.order.map(id => corpus.docs.get(id)!);
-  const shards = shard(docs, DOCS_PER_SHARD);
+  const allShards = shard(docs, DOCS_PER_SHARD);
+  // the parser already read every document (instant, authoritative). The AI fleet
+  // reads a bounded sample FAST — the visible swarm + genuine Nemotron extraction,
+  // merged in, never on the critical path for correctness. Kept small + bounded
+  // because Vultr serverless throughput degrades past ~5 concurrent calls.
+  const MAX_FLEET = 10;
+  const shards = allShards.slice(0, MAX_FLEET);
   opts.onFleet?.(shards.length);
   const results = await fanOut(shards, async (batch, i) => {
     const body = batch.map(d => `--- DOC ${d.docId} (${d.type}) ---\n${d.text.slice(0, PER_DOC_CHARS)}`).join("\n\n");
     const r = await subagent<Extracted>(EXTRACT_SYSTEM, `Documents in this batch:\n\n${body}`, {
-      tier: "judge", maxTokens: 2200, signal: opts.signal, noThink: true, timeoutMs: 40000,
+      tier: "judge", maxTokens: 1800, signal: opts.signal, noThink: true, timeoutMs: 30000,
     });
     return r.ok && r.data ? { ...emptyExtracted(), ...r.data } : emptyExtracted();
   }, {
-    concurrency: opts.concurrency ?? 4,
+    concurrency: opts.concurrency ?? 5,
     onDone: (i, out: Extracted) => {
       const n = (out.vendors?.length ?? 0) + (out.employees?.length ?? 0) + (out.transactions?.length ?? 0) + (out.payments?.length ?? 0) + (out.payroll?.length ?? 0);
       opts.onDrone?.(i, shards[i].length, n, 0);

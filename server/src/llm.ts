@@ -16,14 +16,13 @@ import type { ModelTier } from "@veritas/shared";
 
 const BASE = "https://api.vultrinference.com/v1/chat/completions";
 export const MODELS: Record<ModelTier, string> = {
-  senior: "Qwen/Qwen3.6-27B",
+  senior: "Qwen/Qwen3.6-27B",                     // deep reasoning (Vultr-native)
   junior: "Qwen/Qwen3.6-27B",
-  judge: "nvidia/Nemotron-Cascade-2-30B-A3B",
-  drone: "deepseek-ai/DeepSeek-V4-Flash",  // fast direct-JSON extraction fleet
+  judge: "nvidia/Nemotron-Cascade-2-30B-A3B",     // panel + fleet (NVIDIA, compulsory)
+  drone: "nvidia/Nemotron-Cascade-2-30B-A3B",     // the AI reading fleet (no-think)
 };
 const FALLBACK: Record<string, string> = {
-  "Qwen/Qwen3.6-27B": "Qwen/Qwen3.5-397B-A17B",        // both Vultr-native
-  "Qwen/Qwen3.5-397B-A17B": "moonshotai/Kimi-K2.6",     // Kimi is Vultr-served too
+  "Qwen/Qwen3.6-27B": "Qwen/Qwen3.5-397B-A17B",
   "nvidia/Nemotron-Cascade-2-30B-A3B": "Qwen/Qwen3.6-27B",
 };
 // $/1M tokens (from live catalog)

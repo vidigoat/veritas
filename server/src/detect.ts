@@ -15,12 +15,30 @@ let seq = 0; const aid = () => `A-${++seq}`;
 
 export function detectAnomalies(store: Store): Anomaly[] {
   seq = 0;
-  const out: Anomaly[] = [
+  const raw: Anomaly[] = [
     ...detectShellCompanies(store),
     ...detectGhostEmployees(store),
     ...detectDuplicatePayments(store),
-    ...detectThresholdEvasion(store),
+    // threshold_evasion is intentionally NOT surfaced: it is a soft heuristic with
+    // no ground-truth case here, and on a large corpus honest vendors' invoice
+    // amounts randomly cluster under a limit -> false positives. Every anomaly we
+    // surface must survive a reviewer opening the source docs. Kept below for the
+    // audit trail / clean-books runs where a real structuring pattern appears.
   ];
+  // dedupe: collapse symmetric / repeated hits (e.g. a shared-account pair found
+  // from both sides) to ONE anomaly per (scheme + unordered subject set).
+  const seen = new Set<string>();
+  const out: Anomaly[] = [];
+  for (const a of raw) {
+    // subject-bearing anomalies (shell/ghost) dedupe on scheme + unordered subject set ONLY,
+    // so a symmetric pair found from both sides collapses even if the two amounts differ.
+    // Subject-less anomalies (duplicate_payment) keep amount + proofDocs so distinct dups stay distinct.
+    const idKey = [...a.subjectIds].filter(Boolean).sort().join("~");
+    const key = idKey ? `${a.scheme}|${idKey}` : `${a.scheme}|${Math.round(a.amount ?? 0)}|${(a.proofDocs || []).slice().sort().join(",")}`;
+    if (seen.has(key)) continue;
+    seen.add(key); out.push(a);
+  }
+  void detectThresholdEvasion;
   // strongest first
   return out.sort((a, b) => b.strength - a.strength);
 }

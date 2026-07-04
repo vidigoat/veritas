@@ -22,7 +22,7 @@ export function parseCorpus(corpus: Corpus): Extracted {
       if (d.type === "vendor_registration") {
         const name = grab(t, "Registered Name", "Vendor Name", "Name") ?? t.split("\n")[0].trim();
         ex.vendors.push({ name, vendorId: grab(t, "Vendor ID", "Vendor Id"), address: grab(t, "Registered Address", "Address"),
-          taxId: cleanTax(grab(t, "GSTIN", "Tax ID", "PAN")), bankAccount: grab(t, "Bank Account", "Account"), category: grab(t, "Category"), onboarded: grab(t, "Onboarded"), sourceDoc: id });
+          taxId: cleanTax(grab(t, "VAT No", "GSTIN", "Tax ID", "VAT")), bankAccount: grab(t, "Bank Account", "Account"), category: grab(t, "Category"), onboarded: grab(t, "Onboarded"), sourceDoc: id });
       } else if (d.type === "employee_record") {
         ex.employees.push({ name: grab(t, "Name", "Employee Name") ?? "", empId: grab(t, "Employee ID", "Emp ID"),
           role: grab(t, "Role", "Title", "Designation"), address: grab(t, "Home Address", "Address"),
@@ -40,14 +40,20 @@ export function parseCorpus(corpus: Corpus): Extracted {
           const amounts = [...line.matchAll(/[\d,]+\.\d{2}/g)].map(m => num(m[0])!).filter(Boolean);
           if (amounts.length < 2) continue;           // need a txn amount + a running balance
           const amt = amounts[amounts.length - 2];      // the transaction (balance is last)
-          const ref = dm[2]; const desc = dm[3].replace(/[\d,]+\.\d{2}/g, "").replace(/Rs/g, "").replace(/\s{2,}/g, " ").trim();
+          const ref = dm[2]; const desc = dm[3].replace(/[\d,]+\.\d{2}/g, "").replace(/€|Rs/g, "").replace(/\s{2,}/g, " ").trim();
           const isCredit = /rcpt|receipt|customer|reversal|credit/i.test(line);
           ex.payments.push({ amount: amt, description: `${ref} ${desc}`.slice(0, 60), direction: isCredit ? "credit" : "debit", sourceDoc: id });
         }
       } else if (d.type === "payroll") {
         for (const line of t.split("\n")) {
-          const m = line.match(/(E-\d+)?\s*([A-Z][a-z]+ [A-Z][a-z]+).*?([\d,]+(?:\.\d{2})?)/);
-          if (m && num(m[3])! > 1000) ex.payroll.push({ empId: m[1], name: m[2], amount: num(m[3])!, bankAccount: grabAcct(line), sourceDoc: id });
+          const m = line.match(/^\s*(E-\d+)?\s*([A-Z][a-z]+ [A-Z][a-z]+)/);
+          if (!m) continue;
+          // grab ALL money tokens that carry .dd decimals (the account suffix ****7731 has none),
+          // then take the LAST one on the row — that is the Net Salary, not the bank-account digits.
+          const monies = [...line.matchAll(/(?:€|Rs\.?)?\s*([\d,]{3,}\.\d{2})/g)].map(x => num(x[1])!).filter(v => v !== undefined);
+          if (!monies.length) continue;
+          const amount = monies[monies.length - 1];
+          if (amount > 1000) ex.payroll.push({ empId: m[1], name: m[2], amount, bankAccount: grabAcct(line), sourceDoc: id });
         }
       } else if (d.type === "credit_note") {
         ex.payments.push({ amount: num(grab(t, "Amount", "Total")) ?? 0, description: "credit note " + (grab(t, "Reversal of", "Against") ?? id), direction: "credit", sourceDoc: id });
