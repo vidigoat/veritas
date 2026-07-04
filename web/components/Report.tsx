@@ -5,32 +5,32 @@ export function Report({ state, onClose }: { state: CaseState; onClose: () => vo
   const cleared = state.hypotheses.filter(h => h.status === "cleared");
   const total = state.findings.reduce((s, f) => { const m = f.statement.replace(/,/g, "").match(/(\d{5,})/); return s + (m ? parseInt(m[1]) : 0); }, 0);
   return (
-    <div className="fixed inset-0 z-50 bg-black/30 flex justify-center overflow-y-auto py-10" onClick={onClose}>
-      <div className="bg-[#F6F1E4] w-[760px] max-w-[92vw] rounded-card p-12 shadow-2xl h-fit" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-3 mb-1"><LogoMark size={40} /><div><div className="serif text-2xl font-medium">Fraud Examination Report</div><div className="text-ink-60 text-sm">Meridian Traders Pvt Ltd · FY 2025-26 · confidential</div></div></div>
-        <div className="mono text-[11px] text-ink-60 mb-8 mt-3 flex gap-4 border-y border-ink-30 py-2">
+    <div className="fixed inset-0 z-50 bg-black/25 flex justify-center overflow-y-auto py-10 fadein" onClick={onClose}>
+      <div className="bg-white w-[760px] max-w-[92vw] rounded-card p-11 shadow-lift h-fit border border-hairline scalein" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-1"><LogoMark size={38} /><div><div className="font-display text-[23px] font-medium">Fraud Examination Report</div><div className="text-ink-50 text-[13px]">Meridian Traders Pvt Ltd · FY 2025-26 · confidential</div></div></div>
+        <div className="mono text-[11px] text-ink-50 mb-8 mt-4 flex gap-4 border-y border-line py-2.5">
           <span>{state.findings.length} FINDING{state.findings.length !== 1 ? "S" : ""}</span><span className="text-crimson font-semibold">${total.toLocaleString()} AT RISK</span><span>{cleared.length} CLEARED</span><span>{state.closed?.elapsedS ?? "—"}s ELAPSED</span>
         </div>
         <div className="space-y-7 text-[15px] leading-relaxed">
-          <Section n="1" title="Scope of examination"><p>Complete forensic examination of Meridian Traders Pvt Ltd for fiscal year 2025-26: the general ledger ({state.corpus?.txns.toLocaleString()} transactions), all invoices, bank statements, the vendor master ({state.corpus?.vendors} vendors), and employee records ({state.corpus?.employees} employees). Methodology: ACFE risk-based examination — statistical sweep, hypothesis-driven investigation, verification, and cited findings.</p></Section>
+          <Section n="1" title="Scope of examination"><p className="text-ink-70">Complete forensic examination of Meridian Traders Pvt Ltd for FY 2025-26: the general ledger ({state.corpus?.txns?.toLocaleString?.() ?? "—"} transactions), all invoices, bank statements, the vendor master ({state.corpus?.vendors ?? "—"} vendors), and employee records ({state.corpus?.employees ?? "—"}). Methodology: ACFE risk-based examination — statistical sweep, VultronRetriever document retrieval, hypothesis-driven investigation, independent review, and cited findings.</p></Section>
           <Section n="2" title="Findings">
-            {state.findings.length === 0 ? <p className="text-ink-60">No material findings. The books present no evidence of fraud.</p> : state.findings.map(f => (
+            {state.findings.length === 0 ? <p className="text-ink-50">No material findings. The books present no evidence of fraud.</p> : state.findings.map(f => (
               <div key={f.id} className="mb-5 border-l-2 border-crimson pl-4">
-                <div className="font-semibold flex items-center gap-2"><span className="mono text-crimson">{f.id}</span> · {f.class.replace(/[._]/g, " ")} <span className="mono text-[11px] bg-crimson-t text-crimson px-2 py-0.5 rounded ml-auto">{Math.round(f.confidence * 100)}% confidence</span></div>
-                <p className="mt-2">{f.statement}</p>
-                <div className="mt-3 space-y-1.5">{f.evidence.map((e: any, i: number) => <div key={i} className="text-[13.5px] text-ink-60 flex gap-2"><span className="text-crimson">▸</span><span>{e.claim} <span className="mono text-crimson">[{(e.doc_ids ?? [e.verified_by]).filter(Boolean).join(", ")}]</span></span></div>)}</div>
+                <div className="font-semibold flex items-center gap-2"><span className="mono text-crimson">{f.id}</span> · {f.class.replace(/[._]/g, " ")} <span className="mono text-[11px] bg-crimson-pale text-crimson px-2 py-0.5 rounded ml-auto">{Math.round(f.confidence * 100)}% confidence</span></div>
+                <p className="mt-2 text-ink">{f.statement}</p>
+                <div className="mt-3 space-y-1.5">{f.evidence.map((e: any, i: number) => <div key={i} className="text-[13px] text-ink-70 flex gap-2"><span className="text-crimson">▸</span><span>{e.claim} <span className="mono text-[12px] text-ice bg-ice-pale rounded px-1">{(e.doc_ids ?? [e.verified_by]).filter(Boolean).join(", ")}</span></span></div>)}</div>
               </div>
             ))}
           </Section>
           <Section n="3" title="Cleared items">
-            {cleared.length === 0 ? <p className="text-ink-60">None.</p> : cleared.map(h => <p key={h.hypId} className="mb-2 flex gap-2"><span className="text-green">✓</span><span>{h.statement} <span className="text-green italic">— cleared, innocent explanation on record</span></span></p>)}
+            {cleared.length === 0 ? <p className="text-ink-50">None recorded.</p> : cleared.map(h => <p key={h.hypId} className="mb-2 flex gap-2 text-ink-70"><span className="text-nvidia">✓</span><span>{h.statement} <span className="text-nvidia italic">— cleared, innocent explanation on record</span></span></p>)}
           </Section>
-          <Section n="4" title="Recommendations">{(state.findings[0]?.recommendedActions ?? ["No action required."]).map((a: string, i: number) => <p key={i} className="flex gap-2"><span>{i + 1}.</span>{a}</p>)}</Section>
-          <div className="mono text-[11px] text-ink-60 pt-5 border-t border-ink-30">Generated by VERITAS · every claim cited to a source document · compute cost ${state.usage?.usd.toFixed(3) ?? "—"} on Vultr Serverless Inference · Kimi K2.6 + NVIDIA Nemotron</div>
+          <Section n="4" title="Recommendations">{(state.findings[0]?.recommendedActions ?? ["No action required."]).map((a: string, i: number) => <p key={i} className="flex gap-2 text-ink-70"><span>{i + 1}.</span>{a}</p>)}</Section>
+          <div className="mono text-[11px] text-ink-50 pt-5 border-t border-line">Generated by VERITAS · every claim cited · retrieval on VultronRetriever · reasoning on Vultr Serverless Inference · independent review by NVIDIA Nemotron · compute ${state.usage?.usd.toFixed(3) ?? "—"}</div>
         </div>
-        <button onClick={onClose} className="mt-8 text-sm text-ink-60 hover:text-ink">← Back to console</button>
+        <button onClick={onClose} className="mt-8 text-[13px] text-ink-50 hover:text-ink transition-colors">← Back to the conversation</button>
       </div>
     </div>
   );
 }
-function Section({ n, title, children }: any) { return <div><h3 className="serif text-xl font-medium mb-2">{n}. {title}</h3><div>{children}</div></div>; }
+function Section({ n, title, children }: any) { return <div><h3 className="font-display text-[19px] font-medium mb-2">{n}. {title}</h3><div>{children}</div></div>; }

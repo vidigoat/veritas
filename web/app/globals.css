@@ -2,34 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-garamond: "EB Garamond"; --font-figtree: "Figtree"; --font-mono: "JetBrains Mono";
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+:root { --ease: cubic-bezier(0.22, 1, 0.36, 1); }
+* { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+html, body { height: 100%; }
+body {
+  background: #FFFFFF;
+  color: #111111;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: "tnum";
+  font-size: 15px;
+  line-height: 1.55;
 }
-* { -webkit-font-smoothing: antialiased; }
-body { background: #FFFFEB; color: #1A1A1A; font-feature-settings: "tnum"; }
-.mono { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
-.serif { font-family: "EB Garamond", Georgia, serif; }
+.font-display { font-family: "Fraunces", Georgia, serif; }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 
-/* ping ring — running tool (never a spinner) */
-@keyframes ping-ring { 0% { transform: scale(0.9); opacity: 0.5; } 100% { transform: scale(1.4); opacity: 0; } }
-.ping-ring::after { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: currentColor; animation: ping-ring 1.6s var(--ease) infinite; }
-/* breathe — active phase dot */
-@keyframes breathe { 50% { box-shadow: 0 0 0 7px var(--tw-shadow-color, rgba(199,125,40,0.18)); } }
-.breathe { animation: breathe 1.6s ease-in-out infinite; }
-/* ink shimmer — status verb */
-@keyframes shimmer { to { background-position: -200% 0; } }
-.shimmer { background: linear-gradient(90deg, #1A1A1A 0%, #6B6960 40%, #1A1A1A 60%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.4s linear infinite; }
-/* caret */
+/* streaming caret */
 @keyframes blink { 50% { opacity: 0; } }
-.caret::after { content: ""; display: inline-block; width: 6px; height: 15px; background: #C77D28; vertical-align: -2px; margin-left: 2px; border-radius: 1.5px; animation: blink 1s steps(1) infinite; }
-/* skeleton */
-@keyframes sk { to { background-position: -200% 0; } }
-.sk { background: linear-gradient(90deg, #F2F0E4 25%, #FAF9F0 50%, #F2F0E4 75%); background-size: 200% 100%; animation: sk 1.4s infinite; }
-/* fade-up entrance */
-@keyframes fadeup { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fadeup { animation: fadeup 0.35s var(--ease); }
-/* gold reveal flash */
-@keyframes goldflash { 0% { box-shadow: 0 0 0 0 rgba(201,162,39,0); } 30% { box-shadow: 0 0 0 8px rgba(201,162,39,0.5); } 100% { box-shadow: 0 0 0 0 rgba(196,50,46,0); } }
-.goldflash { animation: goldflash 1s var(--ease); }
+.caret::after { content: ""; display: inline-block; width: 2px; height: 1.05em; background: #EA580C; vertical-align: -0.18em; margin-left: 2px; border-radius: 1px; animation: blink 1.05s steps(1) infinite; }
+/* thinking dots */
+@keyframes thinkbob { 0%,80%,100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-3px); opacity: 1; } }
+.tdot { width: 5px; height: 5px; border-radius: 999px; background: #B9B9B2; display: inline-block; animation: thinkbob 1.3s var(--ease) infinite; }
+/* shimmer status verb */
+@keyframes shimmer { to { background-position: -200% 0; } }
+.shimmer { background: linear-gradient(90deg, #57574F 0%, #B9B9B2 45%, #57574F 60%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.2s linear infinite; }
+/* soft running pulse (never a spinner) */
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(234,88,12,0.25); } 70% { box-shadow: 0 0 0 6px rgba(234,88,12,0); } 100% { box-shadow: 0 0 0 0 rgba(234,88,12,0); } }
+.pulse { animation: pulse-ring 1.6s var(--ease) infinite; }
+/* entrances */
+@keyframes fadeup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fadeup { animation: fadeup 0.4s var(--ease) both; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.fadein { animation: fadein 0.5s var(--ease) both; }
+@keyframes scalein { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+.scalein { animation: scalein 0.45s var(--ease) both; }
+/* crimson reveal flash */
+@keyframes crimsonflash { 0% { box-shadow: 0 0 0 0 rgba(192,24,42,0); } 35% { box-shadow: 0 0 0 6px rgba(192,24,42,0.16); } 100% { box-shadow: 0 0 0 0 rgba(192,24,42,0); } }
+.crimsonflash { animation: crimsonflash 1s var(--ease); }
+
+/* scrollbar — quiet */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #E4E4E1; border-radius: 999px; border: 3px solid #fff; }
+::-webkit-scrollbar-thumb:hover { background: #D4D4CF; }
+
 @media (prefers-reduced-motion) { *, *::after { animation: none !important; } }

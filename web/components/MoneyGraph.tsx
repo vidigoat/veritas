@@ -30,5 +30,5 @@ export function MoneyGraph({ hypotheses, reveal, findings }: { hypotheses: Hyp[]
 }
 function nodeStyle(state: string): React.CSSProperties {
   const c = state === "confirmed" ? "#C4322E" : state === "investigating" ? "#C77D28" : "#1A1A1A";
-  return { background: "#fff", border: `1.5px solid ${c}`, borderRadius: 12, padding: "10px 14px", fontFamily: "Figtree", fontWeight: 600, fontSize: 13, color: c, boxShadow: state === "confirmed" ? "0 0 0 4px rgba(196,50,46,0.12)" : "none" };
+  return { background: "#fff", border: `1.5px solid ${c}`, borderRadius: 12, padding: "10px 14px", fontFamily: "DM Sans", fontWeight: 600, fontSize: 13, color: c, boxShadow: state === "confirmed" ? "0 0 0 4px rgba(196,50,46,0.12)" : "none" };
 }
