@@ -16,7 +16,7 @@ export interface Step { stepId: string; scheme?: string; texts: string[]; verdic
 
 export interface CorpusState {
   status: "idle" | "uploading" | "running" | "done" | "error";
-  corpus?: { stats: Record<string, number>; total: number };
+  corpus?: { stats: Record<string, number>; total: number; company?: string };
   caseId?: string; error?: string;
   phase?: { phase: string; index: number; of: number; title: string };
   fleet: { shards: number; done: number; drones: Drone[]; facts?: number; vendors?: number; employees?: number; txns?: number };
@@ -40,7 +40,7 @@ function reduce(s: CorpusState, ev: any): CorpusState {
     fn(st); return { ...s, steps };
   };
   switch (ev.type) {
-    case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total }, status: "running" };
+    case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total, company: p.company ?? s.corpus?.company }, status: "running" };
     case "phase": return { ...s, phase: p };
     case "fleet_start": return { ...s, fleet: { ...s.fleet, shards: p.shards, drones: [] } };
     case "drone_done": return { ...s, fleet: { ...s.fleet, done: s.fleet.done + 1, drones: [...s.fleet.drones, { i: p.i, docs: p.docs, found: p.found }] } };
@@ -90,27 +90,13 @@ export function useCorpus() {
     caseId.current = r.caseId; consume(`${API}/api/v2/run/${r.caseId}/events`);
   }, [consume]);
 
-  // demo replay of a bundled recording (zero backend)
-  const runDemo = useCallback(async (speed = 4) => {
-    try {
-      const evs = await fetch("/demo-v2.json").then(r => r.json());
-      es.current?.close();
-      const t0 = evs[0]?.ts ?? 0; const start = Date.now(); let i = 0;
-      const tick = () => { const now = (Date.now() - start) * speed; while (i < evs.length && (evs[i].ts - t0) <= now) dispatch(evs[i++]); if (i < evs.length) setTimeout(tick, 80); };
-      tick();
-    } catch { runLive("demo"); }
-  }, [runLive]);
-
-  const docBundle = useRef<Record<string, { type: string; text: string }> | null>(null);
   const openDoc = useCallback(async (docId: string): Promise<{ docId: string; type: string; text: string } | null> => {
-    // demo mode: read the bundled corpus (no backend needed)
-    if (!docBundle.current) { try { docBundle.current = await fetch("/demo-docs.json").then(r => r.json()); } catch { docBundle.current = {}; } }
-    const b = docBundle.current?.[docId] ?? docBundle.current?.[docId.toUpperCase()];
-    if (b) return { docId, type: b.type, text: b.text };
-    const cid = caseId.current ?? "demo";
+    // genuine: fetch the actual uploaded source document from the backend
+    const cid = caseId.current;
+    if (!cid) return null;
     return fetch(`${API}/api/v2/doc/${cid}/${encodeURIComponent(docId)}`).then(r => r.ok ? r.json() : null).catch(() => null);
   }, []);
   const approve = useCallback(async () => { dispatch({ type: "action_executed", payload: {} } as any); }, []);
 
-  return { state, upload, runLive, runDemo, openDoc, approve, caseId };
+  return { state, upload, runLive, openDoc, approve, caseId };
 }

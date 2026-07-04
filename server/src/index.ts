@@ -198,7 +198,7 @@ app.get("/api/v2/run/:id/events", c => {
 // list the corpus (for the browsable case file)
 app.get("/api/v2/corpus/:caseId", c => {
   const cid = c.req.param("caseId");
-  const dir = cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid);
+  const dir = v2runs.get(cid)?.dir ?? (cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid));
   if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
   const corpus = ingestDir(dir);
   return c.json({ stats: corpus.stats, total: corpus.total, docs: corpus.order.map(id => { const d = corpus.docs.get(id)!; return { docId: d.docId, filename: d.filename, type: d.type, preview: d.text.slice(0, 120) }; }) });
@@ -207,7 +207,7 @@ app.get("/api/v2/corpus/:caseId", c => {
 // fetch one real document (clickable citations open this)
 app.get("/api/v2/doc/:caseId/:docId", c => {
   const cid = c.req.param("caseId"); const did = c.req.param("docId");
-  const dir = cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid);
+  const dir = v2runs.get(cid)?.dir ?? (cid === "demo" ? DEMO_CORPUS : join(UPLOADS, cid));
   if (!existsSync(dir)) return c.json({ error: "not found" }, 404);
   const corpus = ingestDir(dir);
   const d = corpus.docs.get(did) ?? corpus.docs.get(did.toUpperCase());

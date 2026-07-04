@@ -7,14 +7,14 @@ import { Swarm } from "./Swarm";
 
 const SCHEME_LABEL: Record<string, string> = { shell_company: "Shell company", ghost_employee: "Ghost employee", duplicate_payment: "Duplicate payment", threshold_evasion: "Threshold evasion", expense_fraud: "Expense fraud", kickback: "Kickback", other: "Anomaly" };
 
-export function CorpusThread({ state, engagement, onOpenDoc }: { state: CorpusState; engagement: string; onOpenDoc: (id: string) => void }) {
+export function CorpusThread({ state, engagement, onOpenDoc }: { state: CorpusState; engagement?: string; onOpenDoc: (id: string) => void }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { const el = endRef.current?.parentElement; if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 260) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [state]);
   const running = state.status === "running";
 
   return (
     <div className="mx-auto w-full max-w-[740px] px-5 pt-8 pb-40">
-      <UserBubble text={engagement} />
+      <UserBubble text={engagement ?? "Audit these books — find any fraud, and cite the source documents."} />
       <div className="mt-7 flex gap-3.5">
         <Avatar />
         <div className="min-w-0 flex-1 space-y-3">
@@ -22,7 +22,7 @@ export function CorpusThread({ state, engagement, onOpenDoc }: { state: CorpusSt
 
           {/* INGEST */}
           {state.corpus && <Label>Ingest</Label>}
-          {state.corpus && <div className="text-[15px] text-ink"><b>{state.corpus.total.toLocaleString()} documents</b> loaded — {Object.entries(state.corpus.stats).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(" · ")}.</div>}
+          {state.corpus && <div className="text-[15px] text-ink">{state.corpus.company ? <>These books belong to <b>{state.corpus.company}</b>. </> : null}<b>{state.corpus.total.toLocaleString()} documents</b> read{Object.keys(state.corpus.stats||{}).length ? <> — {Object.entries(state.corpus.stats).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(" · ")}</> : null}.</div>}
 
           {/* MAP — the drone fleet */}
           {state.fleet.shards > 0 && <><Label>Read</Label><Swarm shards={state.fleet.shards} done={state.fleet.done} drones={state.fleet.drones} facts={state.fleet.facts} corpusTotal={state.corpus?.total} /></>}

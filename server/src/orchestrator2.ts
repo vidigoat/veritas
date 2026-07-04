@@ -42,7 +42,8 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   phase = "ingest";
   yield out(mk("phase", { phase, index: 1, of: 6, title: "Ingest" }));
   const corpus: Corpus = ingestDir(dir);
-  yield out(mk("corpus_loaded", { stats: corpus.stats, total: corpus.total }));
+  const company = detectCompany(corpus);
+  yield out(mk("corpus_loaded", { stats: corpus.stats, total: corpus.total, company }));
 
   // ── READ + CROSS-REFERENCE + INVESTIGATE (overlapped) ──
   //  The parser (parserStore) reads EVERY document instantly and is authoritative
@@ -154,6 +155,23 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   const result: RunResult = { findings, cleared, brain: brain.snapshot(), corpus: { stats: corpus.stats, total: corpus.total }, usd: spend(), elapsedS: Math.round((Date.now() - t0) / 1000), events };
   yield out(mk("done", { findings: findings.length, total, usd: result.usd, elapsedS: result.elapsedS }));
   return result;
+}
+
+/** Auto-recognise the audited company from its own books (it heads its payroll
+ *  registers and bank statements). Genuine — read from the uploaded documents. */
+function detectCompany(corpus: Corpus): string {
+  const tally = new Map<string, number>();
+  for (const id of corpus.order) {
+    const d = corpus.docs.get(id)!;
+    if (d.type !== "payroll" && d.type !== "bank_statement") continue;
+    const first = d.text.split("\n").map(x => x.trim()).find(Boolean);
+    if (first && first.length >= 3 && first.length < 60 && /[A-Za-z]/.test(first) && !/statement|register|payroll|bank/i.test(first)) {
+      tally.set(first, (tally.get(first) ?? 0) + 1);
+    }
+  }
+  let best = "", n = 0;
+  for (const [k, v] of tally) if (v > n) { best = k; n = v; }
+  return best || "the uploaded company";
 }
 
 /** Candidate docs to rerank for an anomaly: its proof docs + docs mentioning its subjects. */
