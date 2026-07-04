@@ -198,5 +198,6 @@ agent in the track. Not a demo. An auditor you could hire.
 CROSS-MODEL: full agreement. Both reviewers independently reached "PLAN-V2 as written likely LOSES a race we're winning; the winning move is hardening + visible reasoning, not a rebuild."
 VERDICT: SCOPE REDUCTION REQUIRED before build. Recommended plan = HARDEN v1: (1) tag working floor, (2) make disconfirming-search reasoning genuine + visible on timeline, (3) keep deterministic backstop as safety net, (4) 1 clean + 1 extra fraud type, (5) staged 3-question interrogation for the video, (6) report+README methodology story. Every V2 subsystem gated behind "does Meridian still run green?". CUT: arbitrary-CSV ingestion, vector/RRF, 5-type fleet, multi-specialist orchestration, full chat platform, 20+ tools.
 
-**UNRESOLVED DECISIONS:**
-- Scope: full V2 rebuild (high risk, likely loses) vs. harden-and-make-visible (achievable, keeps the 10/10, genuinely reasons on the visible path) — Vidit's call.
+**DECISION (Vidit, 2026-07-05):** FULL V2 REBUILD, with risk mitigation: (1) working 10/10 tagged as v1-working-floor before rebuild; (2) build in priority order front-loading real+visible reasoning so any stopping point is demoable; (3) keep deterministic backstop available as the video safety net (plan §0.5). Rebuild proceeds B1-B12; floor guarantees we never submit broken.
+
+NO UNRESOLVED DECISIONS
