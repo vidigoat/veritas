@@ -19,6 +19,7 @@ export interface ToolCtx {
   evidenceLog: { claim: string; ref: string }[];
   approvals: { action: string; target: string; reason: string; approved: boolean | null }[];
   emit: (type: string, payload: any) => void;
+  matchedVendors: Set<string>; // vendors with a real cross_reference conflict — gates shell findings
 }
 export interface ToolSpec { def: ToolDef; readOnly: boolean; describe: (args: any) => string; run: (args: any, ctx: ToolCtx) => any }
 
@@ -133,6 +134,7 @@ export const TOOLS: Record<string, ToolSpec> = {
             matches.push({ field: "address", vendor_id: v.vendor_id, vendor_name: v.name, employee_id: e.employee_id, employee_name: e.name, value: v.address, proof_docs: [`${v.vendor_id}-REG`, `HR-${e.employee_id}`] });
         }
       }
+      if (matches.length) for (const m of matches) ctx.matchedVendors.add(m.vendor_id);
       if (matches.length) for (const m of matches) ctx.emit("reveal", { vendorId: m.vendor_id, employeeId: m.employee_id, matchField: m.field, label: `${m.vendor_name} ⟷ ${m.employee_name} · SAME ${m.field.toUpperCase()}` });
       return { matches, note: matches.length ? "CONFLICT OF INTEREST — verify via the cited registration + HR documents" : "no matches on requested fields" };
     },
@@ -192,6 +194,10 @@ export const TOOLS: Record<string, ToolSpec> = {
       if (!p.success) return errRes(`invalid finding: ${p.success === false ? p.error.issues[0].message : ""}`);
       const uncited = p.data.evidence.filter(e => !(e.doc_ids?.length) && !e.verified_by);
       if (uncited.length) return errRes(`REJECTED — uncited claims: "${uncited[0].claim.slice(0, 60)}". Every evidence item needs doc_ids[] or verified_by (use recompute for figures).`);
+      if (p.data.class === "billing_scheme.shell_company") {
+        const named = JSON.stringify(p.data).match(/V-\d{3}/g) ?? [];
+        if (!named.some(v => ctx.matchedVendors.has(v))) return errRes(`REJECTED — a shell_company finding requires a confirmed conflict-of-interest match from cross_reference. No vendor in this finding has a verified address/bank match to an employee. If there is genuinely no match, this is NOT a shell company — do not file it.`);
+      }
       const finding = { id: `F-${ctx.findings.length + 1}`, ...p.data, unresolved: p.data.unresolved ?? [], recommendedActions: p.data.recommended_actions ?? [] } as unknown as Finding;
       ctx.findings.push(finding);
       ctx.emit("finding_filed", { finding });

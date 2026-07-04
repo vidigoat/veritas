@@ -42,20 +42,23 @@ app.post("/api/case", async c => {
   return c.json({ id });
 });
 
-const sseHeaders = { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "X-Accel-Buffering": "no" };
+const sseHeaders = { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "X-Accel-Buffering": "no", "Access-Control-Allow-Origin": "*" };
 function sseStream(getEvents: () => CaseEvent[], isDone: () => boolean, after = 0) {
-  let i = after;
+  let i = after; let closed = false;
   return new ReadableStream({
-    async start(ctrl) {
+    start(ctrl) {
       const enc = new TextEncoder();
+      const safe = (s: string) => { try { ctrl.enqueue(enc.encode(s)); return true; } catch { closed = true; return false; } };
       const tick = () => {
+        if (closed) return;
         const evs = getEvents();
-        while (i < evs.length) ctrl.enqueue(enc.encode(`id: ${i}\ndata: ${JSON.stringify(evs[i++])}\n\n`));
-        if (isDone() && i >= getEvents().length) { ctrl.enqueue(enc.encode(`data: {"type":"__done"}\n\n`)); ctrl.close(); return; }
+        while (i < evs.length) if (!safe(`id: ${i}\ndata: ${JSON.stringify(evs[i++])}\n\n`)) return;
+        if (isDone() && i >= getEvents().length) { safe(`data: {"type":"__done"}\n\n`); try { ctrl.close(); } catch {} return; }
         setTimeout(tick, 120);
       };
       tick();
     },
+    cancel() { closed = true; },
   });
 }
 
@@ -87,17 +90,21 @@ app.get("/api/demo/events", c => {
   const events: CaseEvent[] = JSON.parse(readFileSync(fp, "utf8"));
   let i = 0; const t0 = events[0]?.ts ?? 0; const start = Date.now();
   const speed = parseFloat(c.req.query("speed") ?? "6");
+  let closed = false;
   return new Response(new ReadableStream({
     start(ctrl) {
       const enc = new TextEncoder();
+      const safe = (s: string) => { try { ctrl.enqueue(enc.encode(s)); return true; } catch { closed = true; return false; } };
       const tick = () => {
+        if (closed) return;
         const now = (Date.now() - start) * speed;
-        while (i < events.length && (events[i].ts - t0) <= now) ctrl.enqueue(enc.encode(`data: ${JSON.stringify(events[i++])}\n\n`));
-        if (i >= events.length) { ctrl.enqueue(enc.encode(`data: {"type":"__done"}\n\n`)); ctrl.close(); return; }
+        while (i < events.length && (events[i].ts - t0) <= now) if (!safe(`data: ${JSON.stringify(events[i++])}\n\n`)) return;
+        if (i >= events.length) { safe(`data: {"type":"__done"}\n\n`); try { ctrl.close(); } catch {} return; }
         setTimeout(tick, 100);
       };
       tick();
     },
+    cancel() { closed = true; },
   }), { headers: sseHeaders });
 });
 

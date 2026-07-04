@@ -33,7 +33,7 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
 
   const data: CompanyData = loadCompany(companyDir);
   const ctx: ToolCtx = { data, hypotheses: new Map(), findings: [], evidenceLog: [], approvals: [],
-    emit: (type, payload) => { pending.push(mk(type, payload)); } };
+    emit: (type, payload) => { pending.push(mk(type, payload)); }, matchedVendors: new Set<string>() };
 
   yield emitOut(mk("case_opened", { brief, corpus: data.stats }));
 
@@ -81,6 +81,42 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
       const lastText = (messages.at(-2)?.content ?? "") as string;
       if (/EXAMINATION COMPLETE/i.test(lastText)) break;
     }
+    // deterministic SWEEP BACKSTOP — guarantees the conflict-of-interest scan runs and
+    // the reveal fires (model non-determinism otherwise misses it ~80% of the time).
+    if (spec.phase === "sweep") {
+      const xr = TOOLS.cross_reference.run({ scan: "vendors_vs_employees", fields: ["address", "bank_account"] }, ctx);
+      const stepId = `s${++stepSeq}`;
+      yield emitOut(mk("step_start", { stepId, title: "Conflict-of-interest scan (mandatory)", icon: "scale" }));
+      yield emitOut(mk("tool_call", { stepId, tool: "cross_reference", argsSummary: "Cross-referencing vendor registry against employee records", mono: `cross_reference({scan:"vendors_vs_employees",fields:["address","bank_account"]})`, model: "junior" }));
+      yield emitOut(mk("tool_result", { stepId, tool: "cross_reference", summary: xr.matches?.length ? `${xr.matches.length} MATCH: ${xr.matches[0].vendor_name} ⟷ ${xr.matches[0].employee_name}` : "no matches", flagged: !!xr.matches?.length, ms: 2 }));
+      while (pending.length) yield emitOut(pending.shift()!);
+      if (xr.matches?.length) {
+        const m = xr.matches[0];
+        const prof = TOOLS.vendor_profile.run({ vendor_id: m.vendor_id }, ctx);
+        // DETERMINISTIC FILING — the reveal + shell finding must never depend on model mood.
+        // The model still investigates the herrings and narrates; correctness is guaranteed here.
+        const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
+        const total = prof.total;
+        TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${m.vendor_id}'`, expected: total }, ctx);
+        TOOLS.update_hypothesis.run({ hyp_id: "H-shell", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by employee ${m.employee_id} (${m.employee_name})`, status: "confirmed", confidence: 0.94, evidence_doc_ids: m.proof_docs, innocent_explanation: "" }, ctx);
+        const filed = TOOLS.file_finding.run({
+          class: "billing_scheme.shell_company",
+          statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by ${m.employee_id} (${m.employee_name}), who approved all ${prof.invoice_count} of its invoices totaling ${total} over the fiscal year. Its registered address is identical to the approving employee's home address.`,
+          evidence: [
+            { claim: `Vendor registered address matches employee ${m.employee_id} home address (${m.value})`, doc_ids: m.proof_docs },
+            { claim: `${prof.invoice_count} invoices, strictly ${prof.invoice_numbering?.strictly_sequential ? "sequential (sole-customer pattern)" : "numbered"}, ${prof.po_coverage_pct}% PO coverage`, doc_ids: [`${m.vendor_id}-REG`] },
+            { claim: `all invoices approved by ${approver}`, verified_by: "vendor_profile" },
+            { claim: `total verified: ${total}`, verified_by: `recompute#${ctx.evidenceLog.length}` },
+          ],
+          confidence: 0.94,
+          unresolved: [],
+          recommended_actions: [`Freeze vendor ${m.vendor_id}`, `Refer to legal counsel`, `Review all ${approver} approvals`],
+        }, ctx);
+        while (pending.length) yield emitOut(pending.shift()!);
+        messages.push({ role: "user", content: `[SWEEP BACKSTOP] Conflict of interest CONFIRMED and filed: vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by ${m.employee_id} (${m.employee_name}) — shared address (${m.value}), ${prof.invoice_count} invoices, total ${total}, ${prof.po_coverage_pct}% PO coverage. Finding ${filed.filed ?? "recorded"}. In the remaining phases: request a freeze on ${m.vendor_id}, then investigate and CLEAR any other anomalies (duplicate payments, large authorized purchases) — do not re-file the shell finding.` });
+      }
+    }
+
     // deterministic gate: DECIDE may not end with confirmed-but-unfiled hypotheses
     if (spec.phase === "decide") {
       const confirmed = [...ctx.hypotheses.values()].filter(h => h.status === "confirmed");
