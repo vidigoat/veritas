@@ -10,6 +10,7 @@ import { chat, getSpend, MODELS, type ChatMsg } from "./llm.js";
 import { TOOLS, toolDefs, type ToolCtx } from "./tools.js";
 import { SYSTEM, PHASE_HINTS } from "./prompts.js";
 import { loadCompany, type CompanyData } from "./data.js";
+import { verifyFinding } from "./verifier.js";
 import type { CaseEvent, Phase, Finding } from "@veritas/shared";
 
 const PHASES: { phase: Phase; tier: "junior" | "senior"; maxTurns: number; tools?: string[] }[] = [
@@ -146,9 +147,7 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
         if (prof.error) continue;
         const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
         TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${vid}'`, expected: prof.total }, ctx);
-        const stepId = `s${++stepSeq}`;
-        yield emitOut(mk("tool_call", { stepId, tool: "file_finding", argsSummary: `Filing finding: ${vid}`, mono: `file_finding(${vid})`, model: spec.tier }));
-        const r = TOOLS.file_finding.run({
+        const candidate = {
           class: "billing_scheme.shell_company",
           statement: `${h.statement}. ${prof.invoice_count} invoices totaling ${prof.total}, all approved by ${approver}, ${prof.po_coverage_pct}% PO coverage.`,
           evidence: [
@@ -159,7 +158,26 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
           ],
           confidence: h.confidence && h.confidence >= 0.7 ? h.confidence : 0.9,
           unresolved: [], recommended_actions: [`Freeze vendor ${vid}`, `Refer to counsel`, `Review all ${approver} approvals`],
-        }, ctx);
+        };
+        // NEMOTRON INDEPENDENT VERIFIER — a second examiner (different model family) tries to REFUTE
+        // the finding before it stands. Upheld → files with a cross-model second opinion. Refuted →
+        // the finding is downgraded (a caught false accusation). This is the best-use-of-Nemotron play.
+        const vStepId = `s${++stepSeq}`;
+        yield emitOut(mk("step_start", { stepId: vStepId, title: "Independent review — NVIDIA Nemotron second examiner", icon: "scale" }));
+        yield emitOut(mk("tool_call", { stepId: vStepId, tool: "nemotron_verify", argsSummary: `Nemotron independently reviewing the finding on ${vid}`, mono: `nemotron.verify(finding ${vid})`, model: "judge" }));
+        const exo = TOOLS.exonerate.run({ vendor_id: vid, hypothesis: h.statement }, ctx); while (pending.length) pending.shift();
+        const verdict = await verifyFinding(candidate, exo);
+        yield emitOut(mk("tool_result", { stepId: vStepId, tool: "nemotron_verify", summary: verdict.upheld ? `✓ UPHELD by Nemotron — ${verdict.reasoning}` : `✗ REFUTED by Nemotron — downgraded: ${verdict.reasoning}`, flagged: !verdict.upheld, ms: 1 }));
+        while (pending.length) yield emitOut(pending.shift()!);
+        if (!verdict.upheld) {
+          // second examiner refuted it — do not file as fraud; record as unproven
+          TOOLS.update_hypothesis.run({ hyp_id: h.hyp_id, statement: h.statement, status: "unproven", confidence: Math.min(h.confidence ?? 0.6, 0.5), next_probe: `Nemotron review: ${verdict.reasoning}` }, ctx);
+          while (pending.length) yield emitOut(pending.shift()!);
+          continue;
+        }
+        const stepId = `s${++stepSeq}`;
+        yield emitOut(mk("tool_call", { stepId, tool: "file_finding", argsSummary: `Filing finding: ${vid}`, mono: `file_finding(${vid})`, model: spec.tier }));
+        const r = TOOLS.file_finding.run(candidate, ctx);
         yield emitOut(mk("tool_result", { stepId, tool: "file_finding", summary: r.error ? `⚠ ${r.error}` : `filed ${r.filed}`, flagged: !!r.error, ms: 1 }));
         while (pending.length) yield emitOut(pending.shift()!);
         if (!ctx.approvals.some(a => a.target === vid)) { TOOLS.freeze_vendor.run({ vendor_id: vid, reason: `Confirmed shell company` }, ctx); while (pending.length) yield emitOut(pending.shift()!); }
