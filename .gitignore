@@ -26,3 +26,4 @@ evals/results/
 server/fixtures/
 server/uploads/
 !web/public/demo-v2.json
+.claude/
