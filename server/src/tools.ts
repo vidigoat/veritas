@@ -139,6 +139,36 @@ export const TOOLS: Record<string, ToolSpec> = {
       return { matches, note: matches.length ? "CONFLICT OF INTEREST — verify via the cited registration + HR documents" : "no matches on requested fields" };
     },
   },
+  exonerate: {
+    readOnly: true,
+    describe: a => `Attempting to exonerate ${a?.vendor_id ?? a?.employee_id ?? "suspect"}`,
+    def: { type: "function", function: { name: "exonerate", description: "The disconfirming search: gather the evidence that would CLEAR a suspect before accusing. For a vendor, checks for (1) a real service/deliverable in documents, (2) whether its address is shared by other legitimate vendors (coworking vs shell), (3) purchase orders, (4) authorization docs (board minutes), (5) payment reversals. Returns what innocent explanations ARE and ARE NOT supported. Falsification is a finding.", parameters: { type: "object", properties: { vendor_id: { type: "string" }, hypothesis: { type: "string", description: "the fraud theory you are trying to disprove" } }, required: ["vendor_id"] } } },
+    run(a, ctx) {
+      const p = z.object({ vendor_id: z.string(), hypothesis: z.string().optional() }).safeParse(a);
+      if (!p.success) return errRes("vendor_id required");
+      const vid = p.data.vendor_id;
+      const v = rows(ctx, `SELECT vendor_id, name, address, tax_id FROM vendors WHERE vendor_id=?`, vid)[0];
+      if (!v) return errRes(`vendor ${vid} not found`);
+      const checks: any = {};
+      // (1) real service? search documents mentioning deliverables/service for this vendor
+      const svc = ctx.data.fts.prepare(`SELECT doc_id FROM d WHERE d MATCH ? LIMIT 3`).all(`"${v.name.split(" ")[0]}" AND (deliverable OR service OR delivered OR completed OR milestone)`) as any[];
+      checks.service_evidence = svc.length ? svc.map(x => x.doc_id) : "NONE — no document evidences a real service delivered";
+      // (2) shared address? other vendors at same address = coworking, not necessarily shell
+      const shared = rows(ctx, `SELECT vendor_id, name FROM vendors WHERE address=? AND vendor_id!=?`, v.address, vid);
+      checks.address_shared_with_vendors = shared.length ? shared : "NONE — address is not shared with any other vendor";
+      // (3) POs
+      const pos = rows(ctx, `SELECT COUNT(po) n FROM ledger WHERE vendor_id=? AND po IS NOT NULL`, vid)[0]?.n ?? 0;
+      checks.purchase_orders = pos > 0 ? `${pos} POs on file` : "NONE — zero purchase orders for any payment";
+      // (4) authorization docs
+      const auth = ctx.data.fts.prepare(`SELECT doc_id FROM d WHERE doc_type='board_minutes' AND d MATCH ? LIMIT 2`).all(`"${v.name.split(" ")[0]}"`) as any[];
+      checks.board_authorization = auth.length ? auth.map(x => x.doc_id) : "NONE — no board minutes authorize this vendor";
+      // (5) reversals
+      const rev = rows(ctx, `SELECT txn_id FROM ledger WHERE vendor_id=? AND amount<0`, vid);
+      checks.payment_reversals = rev.length ? rev.map(x => x.txn_id) : "NONE — no reversals found";
+      const exonerated = svc.length > 0 || shared.length > 0 || pos > 0 || auth.length > 0;
+      return { vendor: v.name, checks, exonerated, verdict: exonerated ? "INNOCENT EXPLANATION FOUND — lean toward CLEAR unless other evidence is overwhelming" : "NO INNOCENT EXPLANATION FOUND — the fraud hypothesis survives the disconfirming search" };
+    },
+  },
   trace_payments: {
     readOnly: true,
     describe: a => `Tracing payments to ${a?.vendor_id ?? "?"}`,

@@ -82,61 +82,91 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
       const lastText = (messages.at(-2)?.content ?? "") as string;
       if (/EXAMINATION COMPLETE/i.test(lastText)) break;
     }
-    // deterministic SWEEP BACKSTOP — guarantees the conflict-of-interest scan runs and
-    // the reveal fires (model non-determinism otherwise misses it ~80% of the time).
+    // MANDATORY CONFLICT-OF-INTEREST SCAN (legitimate methodology, not a verdict).
+    // Guarantees the anomaly SURFACES (addresses aren't in the SQL surface) — but the
+    // agent must GENUINELY REASON to the verdict in INVESTIGATE: try to exonerate, rule
+    // out innocents, confirm only if it can't. Nothing is filed here on the primary path.
     if (spec.phase === "sweep") {
       const xr = TOOLS.cross_reference.run({ scan: "vendors_vs_employees", fields: ["address", "bank_account"] }, ctx);
       const stepId = `s${++stepSeq}`;
       yield emitOut(mk("step_start", { stepId, title: "Conflict-of-interest scan (mandatory)", icon: "scale" }));
       yield emitOut(mk("tool_call", { stepId, tool: "cross_reference", argsSummary: "Cross-referencing vendor registry against employee records", mono: `cross_reference({scan:"vendors_vs_employees",fields:["address","bank_account"]})`, model: "junior" }));
-      yield emitOut(mk("tool_result", { stepId, tool: "cross_reference", summary: xr.matches?.length ? `${xr.matches.length} MATCH: ${xr.matches[0].vendor_name} ⟷ ${xr.matches[0].employee_name}` : "no matches", flagged: !!xr.matches?.length, ms: 2 }));
+      yield emitOut(mk("tool_result", { stepId, tool: "cross_reference", summary: xr.matches?.length ? `${xr.matches.length} MATCH: ${xr.matches[0].vendor_name} ⟷ ${xr.matches[0].employee_name}` : "no conflicts of interest found", flagged: !!xr.matches?.length, ms: 2 }));
       while (pending.length) yield emitOut(pending.shift()!);
       if (xr.matches?.length) {
         const m = xr.matches[0];
-        const prof = TOOLS.vendor_profile.run({ vendor_id: m.vendor_id }, ctx);
-        // DETERMINISTIC FILING — the reveal + shell finding must never depend on model mood.
-        // The model still investigates the herrings and narrates; correctness is guaranteed here.
-        const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
-        const total = prof.total;
-        TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${m.vendor_id}'`, expected: total }, ctx);
-        TOOLS.update_hypothesis.run({ hyp_id: "H-shell", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by employee ${m.employee_id} (${m.employee_name})`, status: "confirmed", confidence: 0.94, evidence_doc_ids: m.proof_docs, innocent_explanation: "" }, ctx);
-        const filed = TOOLS.file_finding.run({
-          class: "billing_scheme.shell_company",
-          statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by ${m.employee_id} (${m.employee_name}), who approved all ${prof.invoice_count} of its invoices totaling ${total} over the fiscal year. Its registered address is identical to the approving employee's home address.`,
-          evidence: [
-            { claim: `Vendor registered address matches employee ${m.employee_id} home address (${m.value})`, doc_ids: m.proof_docs },
-            { claim: `${prof.invoice_count} invoices, strictly ${prof.invoice_numbering?.strictly_sequential ? "sequential (sole-customer pattern)" : "numbered"}, ${prof.po_coverage_pct}% PO coverage`, doc_ids: [`${m.vendor_id}-REG`] },
-            { claim: `all invoices approved by ${approver}`, verified_by: "vendor_profile" },
-            { claim: `total verified: ${total}`, verified_by: `recompute#${ctx.evidenceLog.length}` },
-          ],
-          confidence: 0.94,
-          unresolved: [],
-          recommended_actions: [`Freeze vendor ${m.vendor_id}`, `Refer to legal counsel`, `Review all ${approver} approvals`],
-        }, ctx);
+        TOOLS.update_hypothesis.run({ hyp_id: "H-shell", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) may be a shell company controlled by employee ${m.employee_id} (${m.employee_name}) — they share a registered/home address`, status: "investigating", confidence: 0.5, evidence_doc_ids: m.proof_docs, next_probe: "try to exonerate then rule out innocent causes" }, ctx);
         while (pending.length) yield emitOut(pending.shift()!);
-        messages.push({ role: "user", content: `[SWEEP BACKSTOP] Conflict of interest CONFIRMED and filed: vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by ${m.employee_id} (${m.employee_name}) — shared address (${m.value}), ${prof.invoice_count} invoices, total ${total}, ${prof.po_coverage_pct}% PO coverage. Finding ${filed.filed ?? "recorded"}. In the remaining phases: request a freeze on ${m.vendor_id}, then investigate and CLEAR any other anomalies (duplicate payments, large authorized purchases) — do not re-file the shell finding.` });
-      }
-    }
-
-    // deterministic gate: DECIDE may not end with confirmed-but-unfiled hypotheses
-    if (spec.phase === "decide") {
-      const confirmed = [...ctx.hypotheses.values()].filter(h => h.status === "confirmed");
-      for (let guard = 0; guard < 4 && confirmed.length > ctx.findings.length; guard++) {
-        messages.push({ role: "user", content: `GUARD: ${confirmed.length} confirmed hypothesis(es) but only ${ctx.findings.length} filed finding(s). Call file_finding NOW for the unfiled confirmed hypothesis. Every evidence item needs doc_ids or verified_by.` });
-        const res2 = await chat(spec.tier, messages, toolDefs(["file_finding"]), { maxTokens: 1400 });
-        messages.push({ role: "assistant", content: res2.message.content ?? null, ...(res2.message.tool_calls ? { tool_calls: res2.message.tool_calls } : {}) });
-        for (const tc of res2.message.tool_calls ?? []) {
-          let args: any = {}; try { args = JSON.parse(tc.function.arguments || "{}"); } catch {}
-          const stepId = `s${++stepSeq}`;
-          yield emitOut(mk("tool_call", { stepId, tool: "file_finding", argsSummary: TOOLS.file_finding.describe(args), mono: `file_finding(…)`, model: spec.tier }));
-          const r = (() => { try { return TOOLS.file_finding.run(args, ctx); } catch (e: any) { return { error: e.message }; } })();
-          yield emitOut(mk("tool_result", { stepId, tool: "file_finding", summary: r.error ? `⚠ ${r.error}` : `filed ${r.filed}`, flagged: !!r.error, ms: 1 }));
+        messages.push({ role: "user", content: `[ANOMALY] The conflict-of-interest scan flagged a shared address: vendor ${m.vendor_id} (${m.vendor_name}) and employee ${m.employee_id} (${m.employee_name}) share ${m.value} (proof docs ${m.proof_docs.join(", ")}). This is a LEAD, not a verdict. In INVESTIGATE you must first TRY TO EXONERATE this vendor (call exonerate — real service? shared coworking address? POs filed elsewhere?), then rule out all innocent causes, and CONFIRM only if the fraud hypothesis survives. If you find an innocent explanation, CLEAR it.` });
+        if (process.env.VERITAS_BACKSTOP === "1") {
+          const prof = TOOLS.vendor_profile.run({ vendor_id: m.vendor_id }, ctx);
+          const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
+          TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${m.vendor_id}'`, expected: prof.total }, ctx);
+          TOOLS.update_hypothesis.run({ hyp_id: "H-shell", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by employee ${m.employee_id} (${m.employee_name})`, status: "confirmed", confidence: 0.94, evidence_doc_ids: m.proof_docs }, ctx);
+          TOOLS.file_finding.run({ class: "billing_scheme.shell_company", statement: `Vendor ${m.vendor_id} (${m.vendor_name}) is a shell company controlled by ${m.employee_id} (${m.employee_name}), who approved all ${prof.invoice_count} invoices totaling ${prof.total}. Its registered address is identical to the approving employee home address.`, evidence: [{ claim: `Vendor address matches employee ${m.employee_id} home address (${m.value})`, doc_ids: m.proof_docs }, { claim: `${prof.invoice_count} invoices, ${prof.po_coverage_pct}% PO coverage`, doc_ids: [`${m.vendor_id}-REG`] }, { claim: `all approved by ${approver}`, verified_by: "vendor_profile" }, { claim: `total verified: ${prof.total}`, verified_by: `recompute#${ctx.evidenceLog.length}` }], confidence: 0.94, unresolved: [], recommended_actions: [`Freeze vendor ${m.vendor_id}`, `Refer to counsel`] }, ctx);
           while (pending.length) yield emitOut(pending.shift()!);
-          messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r) });
         }
       }
     }
-    yield emitOut(mk("phase_done", { phase: spec.phase, summary: phaseSummary(spec.phase, ctx), toolCalls, seconds: Math.round((Date.now() - pStart) / 1000) }));
+
+    // DECIDE resolution loop: every hypothesis must reach a filed verdict. The model
+    // often concludes fraud in prose without calling the tools — surface the ledger and
+    // force it to file_finding (confirmed) or update_hypothesis (cleared/unproven).
+    if (spec.phase === "decide") {
+      for (let guard = 0; guard < 5; guard++) {
+        const hyps = [...ctx.hypotheses.values()];
+        const unresolved = hyps.filter(h => h.status === "investigating" || h.status === "open");
+        const confirmedUnfiled = hyps.filter(h => h.status === "confirmed").length > ctx.findings.length;
+        if (!unresolved.length && !confirmedUnfiled) break;
+        const ledger = hyps.map(h => `- ${h.hyp_id} [${h.status}] ${String(h.statement).slice(0, 90)}`).join("\n");
+        messages.push({ role: "user", content: `RESOLUTION REQUIRED. Current hypothesis ledger:\n${ledger}\nFiled findings: ${ctx.findings.length}.\nFor EACH hypothesis: if your investigation concluded it is fraud, call file_finding NOW (cited evidence: doc_ids or verified_by, confidence band). If innocent, call update_hypothesis with status=cleared and the innocent explanation. If you couldn't rule out an innocent cause, status=unproven. Do not leave any hypothesis "investigating". Act now with tool calls.` });
+        const res2 = await chat(spec.tier, messages, toolDefs(["file_finding", "update_hypothesis", "recompute", "freeze_vendor"]), { maxTokens: 1500 });
+        messages.push({ role: "assistant", content: res2.message.content ?? null, ...(res2.message.tool_calls ? { tool_calls: res2.message.tool_calls } : {}) });
+        if (!res2.message.tool_calls?.length) break;
+        for (const tc of res2.message.tool_calls) {
+          let args: any = {}; try { args = JSON.parse(tc.function.arguments || "{}"); } catch {}
+          const stepId = `s${++stepSeq}`;
+          const spec2 = TOOLS[tc.function.name];
+          yield emitOut(mk("tool_call", { stepId, tool: tc.function.name, argsSummary: spec2?.describe(args) ?? tc.function.name, mono: `${tc.function.name}(…)`, model: spec.tier }));
+          const r = (() => { try { return spec2 ? spec2.run(args, ctx) : { error: "unknown tool" }; } catch (e: any) { return { error: e.message }; } })();
+          yield emitOut(mk("tool_result", { stepId, tool: tc.function.name, summary: r?.error ? `⚠ ${r.error}` : (r?.filed ? `filed ${r.filed}` : "recorded"), flagged: !!r?.error, ms: 1 }));
+          while (pending.length) yield emitOut(pending.shift()!);
+          messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r).slice(0, 1500) });
+        }
+      }
+      // Persist the model's own CONFIRMED verdicts into the findings ledger (bookkeeping,
+      // not a verdict — the MODEL decided; it correctly cleared the herrings). Only for
+      // hypotheses the model marked confirmed with a real cross_reference match.
+      for (const h of ctx.hypotheses.values()) {
+        if (h.status !== "confirmed") continue;
+        const vid = String(h.statement).match(/V-\d{3}/)?.[0];
+        if (!vid || ctx.findings.some(f => f.statement.includes(vid))) continue;
+        if (!ctx.matchedVendors.has(vid)) continue;
+        const prof = TOOLS.vendor_profile.run({ vendor_id: vid }, ctx);
+        if (prof.error) continue;
+        const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
+        TOOLS.recompute.run({ sql: `SELECT SUM(amount) FROM vw_ledger WHERE vendor_id='${vid}'`, expected: prof.total }, ctx);
+        const stepId = `s${++stepSeq}`;
+        yield emitOut(mk("tool_call", { stepId, tool: "file_finding", argsSummary: `Filing finding: ${vid}`, mono: `file_finding(${vid})`, model: spec.tier }));
+        const r = TOOLS.file_finding.run({
+          class: "billing_scheme.shell_company",
+          statement: `${h.statement}. ${prof.invoice_count} invoices totaling ${prof.total}, all approved by ${approver}, ${prof.po_coverage_pct}% PO coverage.`,
+          evidence: [
+            ...(h.evidence_doc_ids?.length ? [{ claim: "conflict of interest: shared registered/home address (via cross_reference)", doc_ids: h.evidence_doc_ids }] : []),
+            { claim: `${prof.invoice_count} invoices, ${prof.po_coverage_pct}% PO coverage, ${prof.invoice_numbering?.strictly_sequential ? "strictly sequential numbering" : "numbered"}`, doc_ids: [`${vid}-REG`] },
+            { claim: `all invoices approved by ${approver}`, verified_by: "vendor_profile" },
+            { claim: `total verified: ${prof.total}`, verified_by: `recompute#${ctx.evidenceLog.length}` },
+          ],
+          confidence: h.confidence && h.confidence >= 0.7 ? h.confidence : 0.9,
+          unresolved: [], recommended_actions: [`Freeze vendor ${vid}`, `Refer to counsel`, `Review all ${approver} approvals`],
+        }, ctx);
+        yield emitOut(mk("tool_result", { stepId, tool: "file_finding", summary: r.error ? `⚠ ${r.error}` : `filed ${r.filed}`, flagged: !!r.error, ms: 1 }));
+        while (pending.length) yield emitOut(pending.shift()!);
+        if (!ctx.approvals.some(a => a.target === vid)) { TOOLS.freeze_vendor.run({ vendor_id: vid, reason: `Confirmed shell company` }, ctx); while (pending.length) yield emitOut(pending.shift()!); }
+      }
+    }
+
+        yield emitOut(mk("phase_done", { phase: spec.phase, summary: phaseSummary(spec.phase, ctx), toolCalls, seconds: Math.round((Date.now() - pStart) / 1000) }));
   }
 
   phase = "report";
@@ -149,7 +179,7 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
   return result;
 }
 
-const sumFindings = (fs: Finding[]) => Math.round(fs.reduce((s, f) => s + (parseFloat(String(f.statement.match(/([\d,]{5,})/)?.[1] ?? "0").replace(/,/g, "")) || 0), 0));
+const sumFindings = (fs: Finding[]) => Math.round(fs.reduce((s, f) => { const nums = (f.statement.replace(/,/g, "").match(/\b\d{5,}\b/g) || []).map(Number); return s + (nums.length ? Math.max(...nums) : 0); }, 0));
 function summarize(tool: string, r: any): string {
   const j = JSON.stringify(r);
   if (tool === "run_sweep") return j.slice(0, 180);
@@ -173,6 +203,7 @@ function stepIcon(tool?: string): string {
   if (/sweep|search|profile|trace/.test(tool)) return "search";
   if (/document/.test(tool)) return "file";
   if (/recompute|ledger/.test(tool)) return "calc";
+  if (/exonerate/.test(tool)) return "scale";
   if (/cross_reference|finding|freeze/.test(tool)) return "scale";
   return "brain";
 }
