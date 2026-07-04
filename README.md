@@ -81,6 +81,12 @@ BACKEND              →  Vultr Cloud Compute VM  (Hono SSE engine) — see DEPL
 VultronRetriever ships in three sizes; VERITAS uses **Core** for the routine reranks and
 **Prime** for the decisive question, matching model cost to the moment.
 
+<div align="center">
+<img src="assets/screenshots/07-vultron.png" width="820" alt="VultronRetriever surfaces the vendor registration and employee record that share an address — inside the chat" />
+<br/>
+<sub>VultronRetriever reads 40 candidate pages and surfaces the employee record and vendor registration that share the address — the query words never appear on them.</sub>
+</div>
+
 ## Why it can't hallucinate
 
 This is the core engineering claim, and it's structural, not aspirational:
@@ -94,7 +100,7 @@ This is the core engineering claim, and it's structural, not aspirational:
   "no material findings." It does not cry wolf.
 
 Result on a 10-company evaluation fleet (8 with planted schemes, 2 clean):
-**10/10 correct verdicts, 0 false accusations.**
+**10/10 correct verdicts, 0 false accusations** (verified on the shipped Vultr-native stack).
 
 ## The independent verifier
 
