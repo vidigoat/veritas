@@ -2,11 +2,17 @@
   "name": "veritas",
   "private": true,
   "version": "0.1.0",
-  "description": "VERITAS — the AI forensic auditor that reads 100% of the books and finds fraud in minutes",
+  "description": "VERITAS \u2014 the AI forensic auditor that reads 100% of the books and finds fraud in minutes",
   "scripts": {
     "dev": "pnpm --parallel --filter server --filter web dev",
     "test": "pnpm -r test",
     "datagen": "pnpm --filter datagen generate",
     "evals": "pnpm --filter evals run-all"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
   }
 }

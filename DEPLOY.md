@@ -26,7 +26,7 @@ npm i -g pnpm
 
 # Clone + install
 git clone https://github.com/vidigoat/veritas.git && cd veritas
-pnpm install
+pnpm install   # root package.json approves esbuild/sharp build scripts
 pnpm --filter @veritas/datagen generate            # build the demo company books
 
 # Configure — put your inference key in .env
