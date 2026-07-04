@@ -17,6 +17,8 @@ import { env, ROOT } from "./env.js";
 import { join } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 import type { CaseEvent } from "@veritas/shared";
+import { answerQuestion } from "./qa.js";
+import { loadCompany } from "./data.js";
 
 interface Run { id: string; events: CaseEvent[]; done: boolean; result?: any; approve?: () => void }
 const runs = new Map<string, Run>();
@@ -117,6 +119,32 @@ app.post("/api/record-fixture", async c => {
   mkdirSync(join(ROOT, "server/fixtures"), { recursive: true });
   writeFileSync(join(ROOT, "server/fixtures/demo-run.json"), JSON.stringify(evs));
   return c.json({ recorded: evs.length });
+});
+
+
+// CASE CHAT — interrogate a completed (or in-progress) investigation
+app.post("/api/case/:id/ask", async c => {
+  const run = runs.get(c.req.param("id"));
+  const body = await c.req.json().catch(() => ({}));
+  const question = String(body.question ?? "").slice(0, 500);
+  if (!question) return c.json({ error: "question required" }, 400);
+  const findings = run?.result?.findings ?? run?.events.filter(e => e.type === "finding_filed").map((e: any) => e.payload.finding) ?? [];
+  const hypotheses = run?.result?.hypotheses ?? [];
+  const data = loadCompany(join(ROOT, "datagen/data/out/meridian"));
+  return new Response(new ReadableStream({
+    async start(ctrl) {
+      const enc = new TextEncoder(); let closed = false;
+      const safe = (s: string) => { try { ctrl.enqueue(enc.encode(s)); } catch { closed = true; } };
+      try {
+        for await (const ev of answerQuestion(data, { findings, hypotheses }, question)) {
+          if (closed) break;
+          safe(`data: ${JSON.stringify(ev)}\n\n`);
+        }
+      } catch (e: any) { safe(`data: ${JSON.stringify({ type: "answer_delta", payload: { text: "I hit an error answering that." } })}\n\n`); }
+      safe(`data: {"type":"__done"}\n\n`); try { ctrl.close(); } catch {}
+    },
+    cancel() {},
+  }), { headers: sseHeaders });
 });
 
 serve({ fetch: app.fetch, port: 8787 }, i => console.log(`VERITAS server → http://localhost:${i.port}`));

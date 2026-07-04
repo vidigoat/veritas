@@ -8,13 +8,14 @@ import { MoneyGraph } from "@/components/MoneyGraph";
 import { Evidence } from "@/components/Evidence";
 import { VerdictBar } from "@/components/Verdict";
 import { Report } from "@/components/Report";
+import { CaseChat } from "@/components/CaseChat";
 
 const CONNECTORS = ["QuickBooks", "NetSuite", "Stripe", "Gmail", "SAP"];
 
 export default function Home() {
   const { state, startDemo, startLive, approve, caseId } = useCase();
   const [onboard, setOnboard] = useState(true);
-  const [tab, setTab] = useState<"graph" | "evidence">("graph");
+  const [tab, setTab] = useState<"graph" | "evidence" | "ask">("graph");
   const [showReport, setShowReport] = useState(false);
   const [elapsed, setElapsed] = useState("00:00");
   const [started, setStarted] = useState(false);
@@ -24,7 +25,7 @@ export default function Home() {
     const t0 = Date.now(); const iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); setElapsed(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`); }, 1000);
     return () => clearInterval(iv);
   }, [state.status]);
-  useEffect(() => { if (state.reveal) setTab("graph"); }, [state.reveal]);
+  useEffect(() => { if (state.reveal && tab === "evidence") setTab("graph"); }, [state.reveal]);
 
   const isStaticDeploy = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
   const begin = (mode: "demo" | "live") => { setStarted(true); (mode === "demo" || isStaticDeploy) ? startDemo(3) : startLive(); };
@@ -67,12 +68,12 @@ export default function Home() {
             {/* right panel */}
             <div className="w-[44%] flex flex-col">
               <div className="flex border-b border-line px-4 pt-3 gap-1">
-                {(["graph", "evidence"] as const).map(t => (
-                  <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${tab === t ? "text-ink border-b-2 border-ink" : "text-ink-60"}`}>{t === "graph" ? "Money graph" : "Evidence"}</button>
+                {(["graph", "evidence", "ask"] as const).map(t => (
+                  <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${tab === t ? "text-ink border-b-2 border-ink" : "text-ink-60"}`}>{t === "graph" ? "Money graph" : t === "evidence" ? "Evidence" : "Ask VERITAS"}</button>
                 ))}
               </div>
               <div className="flex-1 min-h-0 relative">
-                {tab === "graph" ? <MoneyGraph hypotheses={state.hypotheses} reveal={state.reveal} findings={state.findings} /> : <Evidence findings={state.findings} />}
+                {tab === "graph" ? <MoneyGraph hypotheses={state.hypotheses} reveal={state.reveal} findings={state.findings} /> : tab === "evidence" ? <Evidence findings={state.findings} /> : <CaseChat caseId={caseId.current} staticMode={isStaticDeploy} />}
               </div>
               {/* facecam-safe corner reserved bottom-right */}
             </div>
