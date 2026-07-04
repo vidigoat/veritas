@@ -75,7 +75,20 @@ export function useCase() {
     es.onerror = () => { /* browser auto-reconnects; server replays from last id */ };
   }, []);
 
-  const startDemo = useCallback((speed = 6) => { consume(`${API}/api/demo/events?speed=${speed}`); }, [consume]);
+  const startDemo = useCallback(async (speed = 6) => {
+    // client-side replay of the bundled fixture — zero backend dependency (bulletproof public demo)
+    try {
+      const evs = await fetch("/demo-run.json").then(r => r.json());
+      esRef.current?.close();
+      const t0 = evs[0]?.ts ?? 0; const start = Date.now(); let i = 0;
+      const tick = () => {
+        const now = (Date.now() - start) * speed;
+        while (i < evs.length && (evs[i].ts - t0) <= now) dispatch(evs[i++]);
+        if (i < evs.length) setTimeout(tick, 90);
+      };
+      tick();
+    } catch { consume(`${API}/api/demo/events?speed=${speed}`); }
+  }, [consume]);
   const startLive = useCallback(async (opts: { key?: string; brief?: string } = {}) => {
     const r = await fetch(`${API}/api/case`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
     const j = await r.json(); if (j.error) { dispatch({ type: "error", payload: { message: j.error } }); return; }

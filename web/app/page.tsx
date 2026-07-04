@@ -8,7 +8,6 @@ import { MoneyGraph } from "@/components/MoneyGraph";
 import { Evidence } from "@/components/Evidence";
 import { VerdictBar } from "@/components/Verdict";
 import { Report } from "@/components/Report";
-import { GraphContext } from "@phosphor-icons/react";
 
 const CONNECTORS = ["QuickBooks", "NetSuite", "Stripe", "Gmail", "SAP"];
 
@@ -27,7 +26,8 @@ export default function Home() {
   }, [state.status]);
   useEffect(() => { if (state.reveal) setTab("graph"); }, [state.reveal]);
 
-  const begin = (mode: "demo" | "live") => { setStarted(true); mode === "demo" ? startDemo(3) : startLive(); };
+  const isStaticDeploy = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
+  const begin = (mode: "demo" | "live") => { setStarted(true); (mode === "demo" || isStaticDeploy) ? startDemo(3) : startLive(); };
 
   if (onboard) return <Onboarding onDone={() => setOnboard(false)} />;
 

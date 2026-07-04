@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
+const isStatic = process.env.STATIC_EXPORT === "1";
 export default {
   reactStrictMode: false,
   transpilePackages: ["@veritas/shared"],
-  async rewrites() {
-    return [{ source: "/api/:path*", destination: "http://localhost:8787/api/:path*" }];
-  },
+  ...(isStatic
+    ? { output: "export", images: { unoptimized: true } }
+    : { async rewrites() { return [{ source: "/api/:path*", destination: "http://localhost:8787/api/:path*" }]; } }),
 };

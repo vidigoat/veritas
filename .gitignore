@@ -10,3 +10,4 @@ out/
 coverage/
 data/out/
 .gstack/
+web/out/
