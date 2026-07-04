@@ -52,10 +52,11 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
       messages.push({ role: "assistant", content: msg.content ?? null, ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}) });
 
       const stepId = `s${++stepSeq}`;
-      if (msg.content?.trim()) {
-        yield emitOut(mk("step_start", { stepId, title: spec.phase === "plan" ? "Examination plan" : "Reasoning", icon: "brain" }));
-        yield emitOut(mk("reasoning_delta", { stepId, text: msg.content.trim().slice(0, 1200) }));
-      }
+      const stepTitle = spec.phase === "plan" ? "Examination plan"
+        : msg.tool_calls?.length ? (TOOLS[msg.tool_calls[0].function.name]?.describe(safeArgs(msg.tool_calls[0])) ?? "Investigating")
+        : "Reasoning";
+      yield emitOut(mk("step_start", { stepId, title: stepTitle, icon: stepIcon(msg.tool_calls?.[0]?.function.name) }));
+      if (msg.content?.trim()) yield emitOut(mk("reasoning_delta", { stepId, text: msg.content.trim().slice(0, 1200) }));
       if (!msg.tool_calls?.length) {
         if (spec.phase === "plan") break; // plan is prose-only
         messages.push({ role: "user", content: "Continue with the next tool call for this phase, or say the phase is complete." });
@@ -164,4 +165,14 @@ function phaseSummary(p: Phase, ctx: ToolCtx): string {
   if (p === "investigate") return `${[...ctx.hypotheses.values()].filter(h => h.status === "confirmed").length} confirmed · ${[...ctx.hypotheses.values()].filter(h => h.status === "cleared").length} cleared`;
   if (p === "decide") return `${ctx.findings.length} findings filed`;
   return "done";
+}
+
+function safeArgs(tc: any): any { try { return JSON.parse(tc.function.arguments || "{}"); } catch { return {}; } }
+function stepIcon(tool?: string): string {
+  if (!tool) return "brain";
+  if (/sweep|search|profile|trace/.test(tool)) return "search";
+  if (/document/.test(tool)) return "file";
+  if (/recompute|ledger/.test(tool)) return "calc";
+  if (/cross_reference|finding|freeze/.test(tool)) return "scale";
+  return "brain";
 }

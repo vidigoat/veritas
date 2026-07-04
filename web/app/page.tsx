@@ -27,7 +27,7 @@ export default function Home() {
   }, [state.status]);
   useEffect(() => { if (state.reveal) setTab("graph"); }, [state.reveal]);
 
-  const begin = (mode: "demo" | "live") => { setStarted(true); mode === "demo" ? startDemo(4) : startLive(); };
+  const begin = (mode: "demo" | "live") => { setStarted(true); mode === "demo" ? startDemo(3) : startLive(); };
 
   if (onboard) return <Onboarding onDone={() => setOnboard(false)} />;
 
