@@ -28,7 +28,9 @@
  *         /Users/vidigoat/veritas/datagen/data/out/corpus/ (test copy)
  */
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 
 /* ----------------------------------------------------------------------- *
  * Deterministic RNG (mulberry32) — fixed seed -> byte-identical corpus.
@@ -938,9 +940,11 @@ function main() {
   manifest.docCounts = counts;
 
   /* ----------------------------- write ---------------------------------- */
+  // portable: resolve relative to this file so it works on any host (dev Mac + VM)
+  const HERE = dirname(fileURLToPath(import.meta.url));                 // datagen/src
   const OUT_DIRS = [
-    "/Users/vidigoat/Downloads/veritas-demo-books",
-    "/Users/vidigoat/veritas/datagen/data/out/corpus",
+    join(homedir(), "Downloads", "veritas-demo-books"),                // convenience copy for uploads demo
+    join(HERE, "..", "data", "out", "corpus"),                         // datagen/data/out/corpus (DEMO_CORPUS)
   ];
   for (const dir of OUT_DIRS) {
     rmSync(dir, { recursive: true, force: true });
