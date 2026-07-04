@@ -14,8 +14,8 @@ import { emptyExtracted, type Corpus, type Extracted, type ExtractVendor, type E
 import type { CaseBrain } from "./brain.js";
 import { parseCorpus } from "./parse.js";
 
-const DOCS_PER_SHARD = 8;
-const PER_DOC_CHARS = 850;
+const DOCS_PER_SHARD = 6;   // small batches → fast, bounded drone calls
+const PER_DOC_CHARS = 460;  // the parser already read full docs; the fleet samples
 
 const EXTRACT_SYSTEM = `You are a forensic data-extraction drone. Read each document and output the fraud-relevant facts as ONE compact JSON object. Copy addresses, tax IDs, and bank-account strings EXACTLY (they are cross-referenced character-for-character). Omit absent fields. Tag every record with sourceDoc (the DOC id). Keep it terse — no prose.
 
@@ -37,44 +37,57 @@ export interface Store {
 export interface FleetProgress { shards: number; done: number; facts: number }
 
 /** Read the corpus with the drone fleet. Streams progress via callbacks. */
-export async function extractCorpus(
-  corpus: Corpus,
-  opts: { brain?: CaseBrain; concurrency?: number; signal?: AbortSignal;
-    onFleet?: (shards: number) => void; onDrone?: (i: number, docCount: number, found: number, ms: number) => void } = {},
-): Promise<{ store: Store; shards: number; facts: number }> {
-  // 1) INSTANT deterministic read of every document — the correctness backbone.
-  const store = aggregate([parseCorpus(corpus)]);
+// the parser already read every document (instant, authoritative). The AI fleet
+// reads a bounded SAMPLE — the visible swarm + genuine Nemotron extraction — kept
+// small + one wave because Vultr serverless throughput degrades past ~6 concurrent.
+const MAX_FLEET = 6;
+const FLEET_CONCURRENCY = 6;
 
-  // 2) The Nemotron drone-fleet reads the corpus in parallel and MERGES what it
-  //    finds (AI coverage for messy/unknown formats). Best-effort: if the fleet
-  //    is slow or a drone times out, the parsed facts already stand.
+/** INSTANT authoritative read of every document — the correctness backbone. */
+export function parserStore(corpus: Corpus, brain?: CaseBrain): Store {
+  const store = aggregate([parseCorpus(corpus)]);
+  if (brain) populateBrain(store, brain);
+  return store;
+}
+
+/** The Nemotron drone-fleet: reads a sample in parallel and MERGES gap-fills into
+ *  `store` IN PLACE. Best-effort + overlappable — it is NEVER on the critical path
+ *  for correctness (detection runs on the parser store, which is already complete). */
+export async function augmentWithFleet(
+  corpus: Corpus, store: Store,
+  opts: { concurrency?: number; signal?: AbortSignal;
+    onFleet?: (shards: number) => void; onDrone?: (i: number, docCount: number, found: number, ms: number) => void } = {},
+): Promise<{ shards: number; facts: number }> {
   const docs = corpus.order.map(id => corpus.docs.get(id)!);
-  const allShards = shard(docs, DOCS_PER_SHARD);
-  // the parser already read every document (instant, authoritative). The AI fleet
-  // reads a bounded sample FAST — the visible swarm + genuine Nemotron extraction,
-  // merged in, never on the critical path for correctness. Kept small + bounded
-  // because Vultr serverless throughput degrades past ~5 concurrent calls.
-  const MAX_FLEET = 10;
-  const shards = allShards.slice(0, MAX_FLEET);
+  const shards = shard(docs, DOCS_PER_SHARD).slice(0, MAX_FLEET);
   opts.onFleet?.(shards.length);
   const results = await fanOut(shards, async (batch, i) => {
     const body = batch.map(d => `--- DOC ${d.docId} (${d.type}) ---\n${d.text.slice(0, PER_DOC_CHARS)}`).join("\n\n");
     const r = await subagent<Extracted>(EXTRACT_SYSTEM, `Documents in this batch:\n\n${body}`, {
-      tier: "judge", maxTokens: 1800, signal: opts.signal, noThink: true, timeoutMs: 30000,
+      tier: "judge", maxTokens: 700, signal: opts.signal, noThink: true, timeoutMs: 22000,
     });
     return r.ok && r.data ? { ...emptyExtracted(), ...r.data } : emptyExtracted();
   }, {
-    concurrency: opts.concurrency ?? 5,
+    concurrency: opts.concurrency ?? FLEET_CONCURRENCY,
     onDone: (i, out: Extracted) => {
       const n = (out.vendors?.length ?? 0) + (out.employees?.length ?? 0) + (out.transactions?.length ?? 0) + (out.payments?.length ?? 0) + (out.payroll?.length ?? 0);
       opts.onDrone?.(i, shards[i].length, n, 0);
     },
   });
   mergeInto(store, aggregate(results));
-
-  if (opts.brain) populateBrain(store, opts.brain);
   const facts = store.vendors.size + store.employees.size + store.txns.length + store.payments.length + store.payroll.length;
-  return { store, shards: shards.length, facts };
+  return { shards: shards.length, facts };
+}
+
+/** Convenience wrapper (parser + fleet, sequential) — kept for non-streaming callers. */
+export async function extractCorpus(
+  corpus: Corpus,
+  opts: { brain?: CaseBrain; concurrency?: number; signal?: AbortSignal;
+    onFleet?: (shards: number) => void; onDrone?: (i: number, docCount: number, found: number, ms: number) => void } = {},
+): Promise<{ store: Store; shards: number; facts: number }> {
+  const store = parserStore(corpus, opts.brain);
+  const { shards, facts } = await augmentWithFleet(corpus, store, opts);
+  return { store, shards, facts };
 }
 
 /** Merge fleet facts into the parsed store — fill gaps, never overwrite a good parse. */

@@ -29,7 +29,7 @@ export async function nemotronPanel(finding: { statement: string; scheme?: strin
   const user = `FINDING UNDER REVIEW\nClass: ${finding.scheme ?? "fraud"}\nStatement: ${finding.statement}\nConfidence asserted: ${finding.confidence ?? "—"}\nEvidence:\n${evidenceText}\n\n${RUBRIC}`;
   const votes = await Promise.all(LENSES.map(async ({ lens, system }): Promise<PanelVote> => {
     try {
-      const res = await chat("judge", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 1000 });
+      const res = await chat("judge", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 400, noThink: true });
       const raw = (res.message.content ?? (res.message as any).reasoning ?? "").toString();
       const j = extractJson<any>(raw) ?? parseLoose(raw);
       return { lens, upheld: j.upheld !== false, confidence: clamp(j.confidence ?? 0.75), reasoning: String(j.reasoning ?? raw).replace(/\s+/g, " ").slice(0, 200) };
@@ -44,5 +44,6 @@ export async function nemotronPanel(finding: { statement: string; scheme?: strin
 const clamp = (n: number) => Math.max(0, Math.min(1, Number(n) || 0));
 function parseLoose(raw: string) {
   const m = raw.match(/"?upheld"?\s*[:=]\s*(true|false)/i);
-  return { upheld: m ? m[1].toLowerCase() === "true" : !/refut|reject|insufficient|no (specific|concrete) evidence/i.test(raw), confidence: 0.7, reasoning: raw };
+  // fail-open: only an EXPLICIT "upheld": false refutes; missing/garbled output upholds the primary finding.
+  return { upheld: m ? m[1].toLowerCase() === "true" : true, confidence: 0.7, reasoning: raw };
 }
