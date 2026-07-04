@@ -16,6 +16,7 @@ while (true) {
   else if (e.type === "reasoning_delta") console.log(`  💭 ${p.text.slice(0, 220).replace(/\n+/g, " ")}`);
   else if (e.type === "tool_call") console.log(`  🔧 [${p.model}] ${p.mono}`);
   else if (e.type === "tool_result") console.log(`     ↳ ${p.summary.slice(0, 160)}`);
+  else if (e.type === "retrieval") console.log(`  📚 VultronRetriever [${p.model}] "${String(p.query).slice(0,50)}" · scanned ${p.candidates} → ${p.surfaced.slice(0,3).map((x:any)=>x.docId+"("+x.score+")").join(", ")}`);
   else if (e.type === "reveal") console.log(`  🚨 REVEAL: ${p.label}`);
   else if (e.type === "hypothesis_update") console.log(`  📌 ${p.hypId} [${p.status}] ${String(p.statement).slice(0, 90)}`);
   else if (e.type === "finding_filed") console.log(`  ⚖️  FINDING FILED: ${p.finding.class} — ${String(p.finding.statement).slice(0, 100)}`);

@@ -44,7 +44,7 @@ export async function verifyFinding(finding: any, exoneration?: any): Promise<Ve
     const res = await chat("judge", [
       { role: "system", content: VERIFIER_SYSTEM },
       { role: "user", content: user },
-    ], undefined, { maxTokens: 700 });
+    ], undefined, { maxTokens: 1000 });
     const raw = res.message.content ?? (res.message as any).reasoning ?? "";
     return { ...parseVerdict(raw), model: res.model };
   } catch (e: any) {
@@ -55,11 +55,21 @@ export async function verifyFinding(finding: any, exoneration?: any): Promise<Ve
 }
 
 function parseVerdict(raw: string): Omit<VerifierVerdict, "model"> {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  const m = cleaned.match(/\{[\s\S]*?\}/);
-  if (m) { try { const j = JSON.parse(m[0]); return { upheld: j.upheld !== false, confidence: clamp(j.confidence ?? 0.8), reasoning: String(j.reasoning ?? "").slice(0, 200) }; } catch {} }
-  // regex fallback: default to UPHELD (the primary examiner already confirmed) unless a clear refutation
-  const refuted = /\b(refute|refuted|reject the finding|not upheld|do not uphold|insufficient evidence)\b/i.test(raw);
-  return { upheld: !refuted, confidence: 0.7, reasoning: raw.replace(/\s+/g, " ").slice(0, 200) || "concurs with the finding" };
+  const s = String(raw ?? "");
+  // MOST ROBUST: read the decision directly, even from verbose or truncated output where the
+  // JSON object never closes. "upheld": false must never be misread as upheld.
+  const decision = s.match(/"?upheld"?\s*[:=]\s*(true|false)/i);
+  if (decision) {
+    const upheld = decision[1].toLowerCase() === "true";
+    const conf = s.match(/"?confidence"?\s*[:=]\s*([0-9.]+)/i);
+    const reas = s.match(/"?reasoning"?\s*[:=]\s*"([^"]{3,})"/i);
+    return { upheld, confidence: clamp(conf ? +conf[1] : 0.8), reasoning: (reas?.[1] ?? s).replace(/\s+/g, " ").slice(0, 220) };
+  }
+  // JSON fallback (outermost object)
+  const m = s.replace(/```json|```/g, "").match(/\{[\s\S]*\}/);
+  if (m) { try { const j = JSON.parse(m[0]); return { upheld: j.upheld !== false, confidence: clamp(j.confidence ?? 0.8), reasoning: String(j.reasoning ?? "").slice(0, 220) }; } catch {} }
+  // keyword fallback: default to UPHELD (primary examiner confirmed) unless a clear refutation
+  const refuted = /\b(refute|refuted|reject|not upheld|do not uphold|insufficient|no (specific |concrete )?evidence|lacks)\b/i.test(s);
+  return { upheld: !refuted, confidence: 0.7, reasoning: s.replace(/\s+/g, " ").slice(0, 220) || "concurs with the finding" };
 }
 const clamp = (n: number) => Math.max(0, Math.min(1, Number(n) || 0));

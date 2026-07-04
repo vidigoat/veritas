@@ -9,13 +9,16 @@
 **Companies lose 5% of revenue to fraud. Audits catch 3% of it.**
 **VERITAS reads 100% of the books — and finds the fraud in minutes.**
 
-[How it works](#how-it-works) · [Why it can't hallucinate](#why-it-cant-hallucinate) · [The independent verifier](#the-independent-verifier) · [Run it](#run-it-locally)
+A chat-native enterprise agent that runs a full forensic examination of a company's books,
+grounded in the documents by **VultronRetriever** and reasoned by **Vultr Serverless Inference**.
+
+[How it works](#how-it-works) · [Built on Vultr](#built-entirely-on-vultr) · [Why it can't hallucinate](#why-it-cant-hallucinate) · [The independent verifier](#the-independent-verifier) · [Run it](#run-it-locally)
 
 <br/>
 
-<img src="assets/screenshots/04-verdict.png" width="880" alt="VERITAS confirms a shell-company scheme — the money graph turns crimson on the shared-address reveal" />
+<img src="assets/screenshots/04-verdict.png" width="820" alt="VERITAS confirms a shell-company scheme in chat — the money graph turns crimson on the shared-address reveal" />
 
-<sub>VERITAS confirms a shell-company scheme: the money graph turns crimson the moment it proves the vendor and the approving employee share an address.</sub>
+<sub>You talk to it. It investigates in the thread — retrieving documents, chasing anomalies, and turning the money graph crimson the moment it proves a vendor and the approving employee share an address.</sub>
 
 </div>
 
@@ -36,33 +39,47 @@ across thousands of documents no one re-reads.
 
 ## What VERITAS does
 
-VERITAS is an autonomous agent that runs a full **forensic examination** of a company's
-books — general ledger, every invoice, bank statements, vendor master, employee records —
-and works each anomaly to a verdict. It doesn't summarize documents; it **investigates**
-them and produces a court-ready report where every claim cites its source.
+VERITAS is not a chatbot and not a dashboard — it's an **agent you talk to** that runs a full
+**forensic examination**. You ask it to audit a company's books; it plans, **retrieves the
+documents that matter (more than once, as the investigation demands)**, calls tools, clears the
+innocent explanations, confirms the fraud, and produces a court-ready verdict where every claim
+cites its source — all streaming into one chat conversation you can interrogate.
 
 ```
-PLAN ─▶ SWEEP ─▶ INVESTIGATE ⟳ ─▶ VERIFY ─▶ DECIDE ─▶ REPORT
- │        │           │              │          │         │
- risk-    Benford,    chase each    recompute  file      cited fraud
- ranked   duplicates, anomaly to    every $    findings, examination
- plan     conflict-   a verdict;    figure     freeze    report +
-          of-interest clear the                vendor    evidence
-          scan        innocent                 (human    exhibits
-                                               approves)
+you ─▶ PLAN ─▶ SWEEP ─▶ INVESTIGATE ⟳ ─▶ VERIFY ─▶ DECIDE ─▶ REPORT ─▶ interrogate
+        │        │           │              │          │         │          │
+        risk-    Benford,    retrieve docs  recompute  file      cited      ask it
+        ranked   duplicates, (VultronRe-    every $    findings, fraud      anything;
+        plan     conflict-   triever) +     figure     freeze    exam +     it answers
+                 of-interest chase each                vendor    evidence   from the
+                 scan        anomaly to a   (human               exhibits   cited
+                             verdict        approves)                        evidence
 ```
-
-<div align="center">
-<img src="assets/screenshots/03-investigating.png" width="820" alt="The live forensic console — investigation timeline on the left, money-flow graph on the right" />
-<br/>
-<sub>The live console: every plan step, tool call, and citation streams in as the examination runs.</sub>
-</div>
 
 On the demo books (2,263 transactions, 2,304 documents), VERITAS catches a shell-company
 scheme — vendor **Apex Supplies**, whose registered address is identical to the procurement
 manager's home address, 14 sequential invoices, zero purchase orders, **$332,087** — in
-**under 3 minutes**. It clears two innocent red herrings along the way, and files a cited
-report. The average fraud runs 12 months undetected.
+**minutes**. It clears two innocent red herrings along the way, and files a cited report.
+
+## Built entirely on Vultr
+
+Every model call runs on Vultr Serverless Inference — there is no other provider.
+
+```
+DOCUMENT RETRIEVAL   →  VultronRetriever   Prime-8B · Core-4.5B · Flash-0.8B   (/v1/rerank)
+   reads the whole page — layout, tables, addresses, tax IDs — and surfaces the document
+   that matters even when your query words never appear on it. Catches what keyword search
+   misses: it pulls the vendor registration whose address exposes the shell.
+CORE REASONING       →  Qwen3.6-27B  (senior + junior; Qwen3.5-397B fallback)  (/v1/chat/completions)
+   plans the examination, decides which document to retrieve next, calls the tools, and
+   reaches every verdict. Chosen by an empirical bake-off (scripts/bakeoff-vultr.mjs).
+INDEPENDENT VERIFIER →  NVIDIA Nemotron-Cascade-2   (/v1/chat/completions)
+   a second examiner from a different model family reviews every finding before it is filed.
+BACKEND              →  Vultr Cloud Compute VM  (Hono SSE engine) — see DEPLOY.md
+```
+
+VultronRetriever ships in three sizes; VERITAS uses **Core** for the routine reranks and
+**Prime** for the decisive question, matching model cost to the moment.
 
 ## Why it can't hallucinate
 
@@ -82,69 +99,39 @@ Result on a 10-company evaluation fleet (8 with planted schemes, 2 clean):
 ## The independent verifier
 
 Before any finding is filed, a **second examiner from a different model family** — NVIDIA's
-**Nemotron-Cascade-2** — independently reviews it and tries to **refute** it. It is handed
-the finding *and* the disconfirming evidence, and told to uphold only if the fraud theory
-survives every innocent explanation.
+**Nemotron-Cascade-2** — independently reviews it and tries to **refute** it. It is handed the
+finding *and* the disconfirming evidence, and upholds only if the fraud theory survives every
+innocent explanation.
 
 - **Upheld** → the finding stands, now with a cross-model second opinion on the record.
 - **Refuted** → the finding is downgraded to *unproven* — a caught false accusation.
 
 <div align="center">
 <img src="assets/screenshots/06-nemotron.png" width="820" alt="NVIDIA Nemotron, the independent second examiner, upholds the finding before it is filed" />
-<br/>
-<sub>NVIDIA Nemotron independently reviews the finding and upholds it before it enters the report.</sub>
-</div>
-
-Two examiners from different families rarely share the same blind spot, so a claim that
-survives both is far stronger than one model's confidence. This is the same principle as a
-second doctor's opinion, applied to fraud. Nemotron also runs the fast statistical sweep as
-the *junior examiner* — cheap triage, expensive reasoning only where it's needed.
-
-## Interrogate the case
-
-The examination isn't a dead report. Every finding, figure, and cleared item is queryable in
-natural language — and every answer is drawn from the same cited evidence, never invented.
-
-<div align="center">
-<img src="assets/screenshots/05-interrogate.png" width="820" alt="Ask VERITAS — a cited natural-language answer about the shell company" />
 </div>
 
 ## How it works
 
-- **Two-tier examiner (Vultr Serverless Inference).** A **junior examiner (NVIDIA
-  Nemotron-Cascade-2)** runs the fast statistical sweep and independent verification; a
-  **senior examiner (Kimi K2.6)** runs the deep investigation, verification, and reporting.
-  The split mirrors how real audit teams staff juniors and seniors. Both models were chosen
-  by an empirical bake-off ([`scripts/bakeoff-results.md`](scripts/bakeoff-results.md)), not
-  by guess.
-- **Genuine reasoning, not a script.** The agent hypothesizes, tries to *exonerate* each
-  suspect first, rules out five classes of innocent explanation, and confirms only what
-  survives. On clean books it clears; on a real shell it confirms — same method, different
-  evidence.
-- **Three retrieval modes.** SQL over the ledger (exact math, never hallucinated), full-text
-  search over documents (cited), and entity cross-referencing (the tool that cracks the case
-  — employee addresses are deliberately *not* in the SQL surface, so the reveal can't be
-  shortcut).
-- **Streaming console.** Every plan step, tool call, hypothesis, and citation streams live
-  over SSE into a forensic-console UI: an investigation timeline, a money-flow graph that
-  turns crimson on the reveal, an evidence drawer, and a one-tap human-approved vendor freeze.
+- **VultronRetriever is the retrieval backbone.** Every "read the books" step goes through it:
+  a wide keyword pass proposes candidate pages, then VultronRetriever reranks them semantically
+  and by layout. When the agent tries to *exonerate* the vendor — "is 245 LBS Marg a shared
+  coworking address?" — VultronRetriever surfaces the employee's HR record and the vendor
+  registration that share it, and the innocent explanation collapses.
+- **Genuine reasoning, not a script.** The agent hypothesizes, tries to exonerate each suspect
+  first, rules out five classes of innocent explanation, and confirms only what survives. Same
+  method on any books — it clears the clean company and confirms the shell.
+- **Everything streams into the chat.** Plan, retrievals, tool calls, the crimson reveal, the
+  Nemotron review, the verdict, the freeze — one conversation you can interrogate afterward.
 
-## Architecture
+## Interrogate the case
 
-```
-┌───────────────── CONSOLE (Next.js) ─ streams from SSE ──────────────────┐
-│  investigation timeline │ money graph (react-flow) │ evidence · verdict  │
-│                          │                          │ · ask VERITAS       │
-└─────────────────────────────────▲───────────────────────────────────────┘
-                                   │ Server-Sent Events (typed vocabulary)
-┌─────────────────────────────────┴───────────────────────────────────────┐
-│  ORCHESTRATOR (Hono) — async-generator loop, per-turn spend guard        │
-│  LLM layer: Vultr Serverless Inference · junior/senior routing · failover│
-│  15 tools (Zod-validated, every failure → error result, self-repair)     │
-│  independent verifier: Nemotron refutes each finding before it is filed  │
-│  data: SQLite ledger + views · FTS5 document index · entity cross-ref     │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+The examination isn't a dead report. Ask a follow-up in the same thread — "how do you know Apex
+is a shell? could the $250k be innocent?" — and it answers from the same cited evidence,
+retrieving with VultronRetriever as needed. Never invented.
+
+<div align="center">
+<img src="assets/screenshots/05-interrogate.png" width="820" alt="Ask VERITAS — a cited natural-language answer about the shell company" />
+</div>
 
 ## Run it locally
 
@@ -153,20 +140,24 @@ pnpm install
 pnpm --filter @veritas/datagen generate            # build the demo company
 cp .env.example .env                               # add your Vultr inference key
 pnpm --filter @veritas/server start &              # forensic engine on :8787
-pnpm --filter @veritas/web dev                     # console on :3000
-# open http://localhost:3000
+pnpm --filter @veritas/web dev                     # chat console on :3000
+# open http://localhost:3000  (the public demo replays a recording — no backend needed)
 ```
 
-Everything runs on **Vultr Serverless Inference** — reasoning (Kimi K2.6 + NVIDIA Nemotron)
-and retrieval. No other LLM provider is used.
+Deploying on Vultr (VM + serverless inference + static console): see **[DEPLOY.md](DEPLOY.md)**.
 
 ## Stack
 
-`Vultr Serverless Inference` (Kimi K2.6 · NVIDIA Nemotron-Cascade-2) · `Hono` · `Next.js` ·
+`Vultr Serverless Inference` — retrieval on **VultronRetriever** (Prime/Core/Flash), reasoning on
+**Qwen3.6-27B**, independent verification on **NVIDIA Nemotron-Cascade-2** · `Hono` · `Next.js` ·
 `react-flow` · `node:sqlite` + FTS5 · `Zod` · TypeScript.
+
+## Built at the RAISE Summit Hackathon 2026
+
+Every line of VERITAS was written during the event (July 4–5, 2026, Vultr track). The commit
+history is the record: the first commit lands minutes after hacking opened, and the whole build
+— agent, tools, VultronRetriever integration, chat console — is timestamped inside the window.
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-<div align="center"><sub>Built at the RAISE Summit 2026.</sub></div>

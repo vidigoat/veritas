@@ -13,6 +13,7 @@ import type { CompanyData } from "./data.js";
 import type { ToolDef } from "./llm.js";
 import type { Finding } from "@veritas/shared";
 import type { CaseBrain } from "./brain.js";
+import { rerank, type RetrieverTier } from "./retriever.js";
 
 export interface ToolCtx {
   data: CompanyData;
@@ -95,17 +96,38 @@ export const TOOLS: Record<string, ToolSpec> = {
   },
   search_documents: {
     readOnly: true,
-    describe: a => `Searching documents: "${a?.query ?? ""}"`,
-    def: { type: "function", function: { name: "search_documents", description: "Full-text search over all documents (invoices, vendor registrations, employee records, bank statements, board minutes, credit notes). Returns snippets + doc_ids.", parameters: { type: "object", properties: { query: { type: "string" }, doc_type: { type: "string", enum: ["invoice", "vendor_registration", "employee_record", "bank_statement", "board_minutes", "credit_note"] }, limit: { type: "number" } }, required: ["query"] } } },
-    run(a, ctx) {
-      const p = z.object({ query: z.string(), doc_type: z.string().optional(), limit: z.number().optional() }).safeParse(a);
-      if (!p.success) return errRes("query required");
-      const q = p.data.query.replace(/['"*()]/g, " ").trim().split(/\s+/).map(w => `"${w}"`).join(" OR ");
+    describe: a => `VultronRetriever: "${a?.query ?? ""}"`,
+    def: { type: "function", function: { name: "search_documents", description: "Semantic document retrieval powered by VultronRetriever. Reads the full page (layout, tables, fields) and returns the most relevant documents for a query — catches evidence that keyword search misses (e.g. a registration page whose address matches an employee's, even if the query words never appear on it). Covers invoices, vendor registrations, employee records, bank statements, board minutes, credit notes.", parameters: { type: "object", properties: { query: { type: "string", description: "a natural-language description of the evidence you are looking for" }, doc_type: { type: "string", enum: ["invoice", "vendor_registration", "employee_record", "bank_statement", "board_minutes", "credit_note"] }, limit: { type: "number" }, precision: { type: "boolean", description: "use the highest-accuracy retriever (Prime) for a decisive question" } }, required: ["query"] } } },
+    async run(a, ctx) {
+      const p = z.object({ query: z.string().min(1), doc_type: z.string().optional(), limit: z.coerce.number().optional(), precision: z.union([z.boolean(), z.string()]).optional().transform(v => v === true || v === "true") }).safeParse(a);
+      if (!p.success) return errRes(`search_documents needs a non-empty "query" string${a?.limit ? " (limit must be a number)" : ""}`);
+      const topN = Math.min(p.data.limit ?? 6, 12);
+      // STAGE 1 — wide keyword recall (cheap first-stage retrieval)
+      let candIds: { docId: string; docType?: string }[] = [];
       try {
+        const q = p.data.query.replace(/['"*()]/g, " ").trim().split(/\s+/).filter(Boolean).map(w => `"${w}"`).join(" OR ");
         const where = p.data.doc_type ? `AND doc_type='${p.data.doc_type}'` : "";
-        const r = ctx.data.fts.prepare(`SELECT doc_id, doc_type, snippet(d, 2, '[', ']', '…', 18) snip FROM d WHERE d MATCH ? ${where} LIMIT ?`).all(q, Math.min(p.data.limit ?? 8, 20));
-        return { hits: r };
-      } catch (e: any) { return errRes(`search error: ${e.message.slice(0, 120)}`); }
+        if (q) candIds = (ctx.data.fts.prepare(`SELECT doc_id, doc_type FROM d WHERE d MATCH ? ${where} LIMIT 40`).all(q) as any[]).map(r => ({ docId: r.doc_id, docType: r.doc_type }));
+      } catch { /* fall through to broadening */ }
+      // broaden when recall is thin — VultronRetriever ranks a wider net semantically
+      if (candIds.length < 6) {
+        const seen = new Set(candIds.map(c => c.docId));
+        for (const id of ctx.data.docs.keys()) {
+          if (seen.has(id)) continue;
+          const dtype = id.startsWith("HR-") ? "employee_record" : id.includes("-REG") ? "vendor_registration" : id.startsWith("BS-") ? "bank_statement" : id.startsWith("BOARD") ? "board_minutes" : id.startsWith("CR-") ? "credit_note" : "invoice";
+          if (p.data.doc_type && dtype !== p.data.doc_type) continue;
+          candIds.push({ docId: id, docType: dtype });
+          if (candIds.length >= 40) break;
+        }
+      }
+      if (!candIds.length) return { hits: [], note: "no documents matched" };
+      const candidates = candIds.map(c => ({ docId: c.docId, docType: c.docType, text: ctx.data.docs.get(c.docId) ?? "" })).filter(c => c.text);
+      // STAGE 2 — VultronRetriever rerank (the required retrieval engine)
+      const tier: RetrieverTier = p.data.precision ? "prime" : "core";
+      const ranked = await rerank(p.data.query, candidates, { topN, tier });
+      ctx.emit("retrieval", { query: p.data.query, model: tier === "prime" ? "VultronRetriever Prime" : "VultronRetriever Core", candidates: candidates.length, surfaced: ranked.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) });
+      const hits = ranked.map(r => ({ doc_id: r.docId, doc_type: r.docType, relevance: +r.score.toFixed(2), snip: r.text.replace(/\s+/g, " ").slice(0, 140) }));
+      return { hits, retriever: tier === "prime" ? "VultronRetrieverPrime" : "VultronRetrieverCore", scanned: candidates.length };
     },
   },
   get_document: {
@@ -232,7 +254,7 @@ export const TOOLS: Record<string, ToolSpec> = {
     describe: a => `Re-verifying figure ${a?.expected ?? ""}`,
     def: { type: "function", function: { name: "recompute", description: "Re-derive a dollar figure from the ledger to verify a claim before filing. Provide the SQL aggregate and the expected value.", parameters: { type: "object", properties: { sql: { type: "string", description: "SELECT returning a single numeric value" }, expected: { type: "number" } }, required: ["sql", "expected"] } } },
     run(a, ctx) {
-      const p = z.object({ sql: z.string(), expected: z.number() }).safeParse(a);
+      const p = z.object({ sql: z.string(), expected: z.coerce.number() }).safeParse(a);
       if (!p.success) return errRes("sql + expected required");
       if (!/^select\b/i.test(p.data.sql.trim())) return errRes("SELECT only");
       try {
@@ -263,8 +285,8 @@ export const TOOLS: Record<string, ToolSpec> = {
     describe: a => `Filing finding: ${a?.class ?? ""}`,
     def: { type: "function", function: { name: "file_finding", description: "File a confirmed finding into the case record. REJECTED unless every evidence item carries doc_ids or a recompute ref. The report is built ONLY from filed findings.", parameters: { type: "object", properties: { class: { type: "string", enum: ["billing_scheme.shell_company", "duplicate_payment", "expense_fraud", "threshold_evasion", "other"] }, statement: { type: "string" }, evidence: { type: "array", items: { type: "object", properties: { claim: { type: "string" }, doc_ids: { type: "array", items: { type: "string" } }, verified_by: { type: "string" } }, required: ["claim"] } }, confidence: { type: "number" }, unresolved: { type: "array", items: { type: "object", properties: { item: { type: "string" }, needed: { type: "string" } } } }, recommended_actions: { type: "array", items: { type: "string" } } }, required: ["class", "statement", "evidence", "confidence"] } } },
     run(a, ctx) {
-      const p = z.object({ class: z.string(), statement: z.string().min(20), confidence: z.number(),
-        evidence: z.array(z.object({ claim: z.string(), doc_ids: z.array(z.string()).optional(), verified_by: z.string().optional() })).min(2),
+      const p = z.object({ class: z.string(), statement: z.string().min(20), confidence: z.coerce.number(),
+        evidence: z.array(z.object({ claim: z.string(), doc_ids: z.union([z.array(z.string()), z.string()]).optional().transform(v => typeof v === "string" ? [v] : v), verified_by: z.string().optional() })).min(1),
         unresolved: z.array(z.object({ item: z.string(), needed: z.string() })).optional(),
         recommended_actions: z.array(z.string()).optional() }).safeParse(a);
       if (!p.success) return errRes(`invalid finding: ${p.success === false ? p.error.issues[0].message : ""}`);

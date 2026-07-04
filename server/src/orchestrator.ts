@@ -76,7 +76,22 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
         try { args = JSON.parse(tc.function.arguments || "{}"); } catch { result = { error: "arguments were not valid JSON — retry with valid JSON" }; }
         yield emitOut(mk("tool_call", { stepId, tool: tc.function.name, argsSummary: spec2?.describe(args) ?? tc.function.name, mono: `${tc.function.name}(${tc.function.arguments.slice(0, 90)})`, model: spec.tier }));
         const tt0 = Date.now();
-        if (!result) result = spec2 ? (() => { try { return spec2.run(args, ctx); } catch (e: any) { return { error: `tool crashed: ${e.message.slice(0, 120)}` }; } })() : { error: `unknown tool ${tc.function.name}` };
+        // SHELL-FINDING GATE — a shell-company finding (in any phase) is deferred to the
+        // deterministic Nemotron-reviewed materialization in DECIDE, which builds fully-cited
+        // evidence and runs the independent second examiner exactly once. We confirm the
+        // matched hypothesis so materialization picks it up; a vendor with NO cross_reference
+        // match never materializes, so false accusations remain structurally impossible.
+        if (!result && tc.function.name === "file_finding" && /shell|billing_scheme/i.test(JSON.stringify(args))) {
+          const vid = JSON.stringify(args).match(/V-\d{3}/)?.[0];
+          if (vid && ctx.matchedVendors.has(vid)) {
+            for (const h of ctx.hypotheses.values()) if (String(h.statement).includes(vid) && h.status !== "confirmed") TOOLS.update_hypothesis.run({ hyp_id: h.hyp_id, statement: h.statement, status: "confirmed", confidence: Math.max(h.confidence ?? 0.7, 0.85), evidence_doc_ids: h.evidence_doc_ids }, ctx);
+            while (pending.length) yield emitOut(pending.shift()!);
+            result = { queued: true, note: `Noted — I've confirmed the shell-company hypothesis on ${vid}. It will be filed after the independent NVIDIA Nemotron review in the DECIDE phase. Continue the examination, or say it is complete.` };
+          } else {
+            result = { error: `Cannot file a shell-company finding on ${vid ?? "this vendor"} — no cross_reference conflict (shared address/bank) is on record. Run cross_reference first; without a concrete match this is not a confirmable shell.` };
+          }
+        }
+        if (!result) result = spec2 ? await (async () => { try { return await spec2.run(args, ctx); } catch (e: any) { return { error: `tool crashed: ${e.message.slice(0, 120)}` }; } })() : { error: `unknown tool ${tc.function.name}` };
         const summary = result?.error ? `⚠ ${result.error}` : summarize(tc.function.name, result);
         yield emitOut(mk("tool_result", { stepId, tool: tc.function.name, summary, flagged: !!result?.error || /SEQUENTIAL|CONFLICT|deviation/i.test(JSON.stringify(result).slice(0, 400)), ms: Date.now() - tt0 }));
         while (pending.length) yield emitOut(pending.shift()!); // reveal / hypothesis / finding events surface in order
@@ -237,6 +252,7 @@ function summarize(tool: string, r: any): string {
   if (tool === "vendor_profile") return `${r.vendor?.name}: ${r.invoice_count} invoices · total ${r.total} · PO ${r.po_coverage_pct}% · ${r.invoice_numbering?.strictly_sequential ? "SEQUENTIAL numbering" : "normal numbering"}`;
   if (tool === "cross_reference") return r.matches?.length ? `${r.matches.length} MATCH: ${r.matches[0].vendor_name} ⟷ ${r.matches[0].employee_name} (same ${r.matches[0].field})` : "no matches";
   if (tool === "query_ledger") return `${r.row_count ?? 0} rows`;
+  if (tool === "search_documents") return r.hits?.length ? `${r.retriever ?? "VultronRetriever"} ranked ${r.scanned} pages → ${r.hits.slice(0, 3).map((h: any) => `${h.doc_id} (${h.relevance})`).join(", ")}` : "no pages surfaced";
   if (tool === "recompute") return r.verified ? `✓ verified ${r.computed}` : `✗ mismatch: computed ${r.computed} vs expected ${r.expected}`;
   if (tool === "file_finding") return r.filed ? `filed ${r.filed}` : j.slice(0, 140);
   return j.slice(0, 140);

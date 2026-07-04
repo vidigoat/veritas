@@ -52,7 +52,7 @@ export async function* answerQuestion(
       let args: any = {}; try { args = JSON.parse(tc.function.arguments || "{}"); } catch {}
       const spec = TOOLS[tc.function.name];
       yield { type: "answer_tool", payload: { tool: tc.function.name, summary: spec?.describe(args) ?? tc.function.name } };
-      const r = (() => { try { return spec ? spec.run(args, ctx) : { error: "unknown tool" }; } catch (e: any) { return { error: e.message }; } })();
+      const r = await (async () => { try { return spec ? await spec.run(args, ctx) : { error: "unknown tool" }; } catch (e: any) { return { error: e.message }; } })();
       messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r).slice(0, 2500) });
     }
   }

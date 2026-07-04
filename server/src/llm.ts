@@ -4,27 +4,33 @@
  *   route(tier) ──▶ model ──▶ chat(): retries(429/5xx) → failover(once, pre-output)
  *                              └─ usage metering → spend guard ($150 hard kill)
  *
- * Bake-off (GO-0, in repo): Kimi-K2.6 4/4 = senior · Nemotron-Cascade-2 4/4
- * fastest = junior (sweep, triage, judge). MiniMax-M2.7 = fallback senior.
+ * All models run on Vultr Serverless Inference. Retrieval runs on VultronRetriever
+ * (see retriever.ts). Bake-off (scripts/bakeoff-vultr.mjs): Qwen3.5-397B, Qwen3.6-27B,
+ * Kimi, Nemotron all 4/4 on the forensic tool-call suite.
+ *   senior = Qwen3.6-27B        (Vultr-native, newest generation; Qwen3.5-397B fallback)
+ *   junior = Qwen3.6-27B        (Vultr-native, fast sweep/triage)
+ *   judge  = Nemotron-Cascade-2 (Vultr-served independent verifier; NVIDIA)
  */
 import { env } from "./env.js";
 import type { ModelTier } from "@veritas/shared";
 
 const BASE = "https://api.vultrinference.com/v1/chat/completions";
 export const MODELS: Record<ModelTier, string> = {
-  senior: "moonshotai/Kimi-K2.6",
-  junior: "nvidia/Nemotron-Cascade-2-30B-A3B",
+  senior: "Qwen/Qwen3.6-27B",
+  junior: "Qwen/Qwen3.6-27B",
   judge: "nvidia/Nemotron-Cascade-2-30B-A3B",
 };
 const FALLBACK: Record<string, string> = {
-  "moonshotai/Kimi-K2.6": "MiniMaxAI/MiniMax-M2.7",
-  "nvidia/Nemotron-Cascade-2-30B-A3B": "moonshotai/Kimi-K2.6",
+  "Qwen/Qwen3.6-27B": "Qwen/Qwen3.5-397B-A17B",        // both Vultr-native
+  "Qwen/Qwen3.5-397B-A17B": "moonshotai/Kimi-K2.6",     // Kimi is Vultr-served too
+  "nvidia/Nemotron-Cascade-2-30B-A3B": "Qwen/Qwen3.6-27B",
 };
 // $/1M tokens (from live catalog)
 const PRICE: Record<string, [number, number]> = {
-  "moonshotai/Kimi-K2.6": [0.3, 1.2],
+  "Qwen/Qwen3.5-397B-A17B": [0.4, 1.6],
+  "Qwen/Qwen3.6-27B": [0.1, 0.4],
   "nvidia/Nemotron-Cascade-2-30B-A3B": [0.15, 0.6],
-  "MiniMaxAI/MiniMax-M2.7": [0.3, 1.2],
+  "moonshotai/Kimi-K2.6": [0.3, 1.2],
 };
 
 export interface ChatMsg { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
