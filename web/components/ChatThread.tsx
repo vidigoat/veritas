@@ -10,7 +10,8 @@ export interface FollowMsg { role: "user" | "veritas"; text: string; tools: stri
 export function ChatThread({ state, followups, engagement }: { state: CaseState; followups: FollowMsg[]; engagement: string }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [state, followups]);
-  const steps = state.phases.flatMap(ph => ph.steps.map(st => ({ st, phase: ph.phase })));
+  const steps = state.phases.flatMap(ph => ph.steps.map(st => ({ st, phase: ph.phase })))
+    .filter(({ st }) => st.reasoning || st.tools.length || st.docs.length || st.entities.length);
   const revealed = !!state.reveal;
   const finding = state.findings[0];
 

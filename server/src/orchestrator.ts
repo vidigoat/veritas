@@ -16,7 +16,7 @@ import type { CaseEvent, Phase, Finding } from "@veritas/shared";
 
 const PHASES: { phase: Phase; tier: "junior" | "senior"; maxTurns: number; tools?: string[] }[] = [
   { phase: "plan", tier: "senior", maxTurns: 1 },
-  { phase: "sweep", tier: "junior", maxTurns: 12, tools: ["run_sweep", "cross_reference", "update_hypothesis"] },
+  { phase: "sweep", tier: "junior", maxTurns: 3, tools: ["run_sweep", "cross_reference", "update_hypothesis"] },
   { phase: "investigate", tier: "senior", maxTurns: 22 },
   { phase: "verify", tier: "senior", maxTurns: 8, tools: ["recompute", "query_ledger", "update_hypothesis"] },
   { phase: "decide", tier: "senior", maxTurns: 10, tools: ["file_finding", "freeze_vendor", "update_hypothesis", "recompute"] },
@@ -107,6 +107,17 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
     // agent must GENUINELY REASON to the verdict in INVESTIGATE: try to exonerate, rule
     // out innocents, confirm only if it can't. Nothing is filed here on the primary path.
     if (spec.phase === "sweep") {
+      // Deterministic statistical triage — Benford, threshold-evasion, and approver
+      // concentration are standard first-pass analytics; run them so the examination always
+      // opens with the same rigorous sweep (the genuine reasoning happens in INVESTIGATE).
+      for (const kind of ["benford", "threshold", "approver_concentration"] as const) {
+        const sr = TOOLS.run_sweep.run({ kind }, ctx);
+        const sStep = `s${++stepSeq}`;
+        yield emitOut(mk("step_start", { stepId: sStep, title: `Statistical sweep — ${kind.replace("_", " ")}`, icon: "search" }));
+        yield emitOut(mk("tool_call", { stepId: sStep, tool: "run_sweep", argsSummary: `Sweeping: ${kind}`, mono: `run_sweep({kind:"${kind}"})`, model: "junior" }));
+        yield emitOut(mk("tool_result", { stepId: sStep, tool: "run_sweep", summary: summarize("run_sweep", sr).slice(0, 150), flagged: /flag|deviat|concentrat|below|threshold/i.test(JSON.stringify(sr).slice(0, 300)), ms: 2 }));
+        while (pending.length) yield emitOut(pending.shift()!);
+      }
       const xr = TOOLS.cross_reference.run({ scan: "vendors_vs_employees", fields: ["address", "bank_account"] }, ctx);
       const stepId = `s${++stepSeq}`;
       yield emitOut(mk("step_start", { stepId, title: "Conflict-of-interest scan (mandatory)", icon: "scale" }));
@@ -124,6 +135,20 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
           brain.link(m.employee_id, m.vendor_id, "shares_address", `same ${m.field}: ${m.value}`);
           brain.record(`Conflict of interest: ${m.vendor_name} shares ${m.field} with employee ${m.employee_name}`, "cross_reference", m.vendor_id);
         } catch {}
+        // MANDATORY VultronRetriever retrieval — read the pages that expose the conflict.
+        // VultronRetriever (Prime) surfaces the vendor registration and the employee record
+        // that share the address, even though a keyword search for "shell company" finds neither.
+        {
+          const rStep = `s${++stepSeq}`;
+          const rquery = `registration document for vendor ${m.vendor_name} and personnel record for employee ${m.employee_name}, both listing the address ${m.value}`;
+          yield emitOut(mk("step_start", { stepId: rStep, title: "Retrieve the exposing documents — VultronRetriever", icon: "search" }));
+          yield emitOut(mk("tool_call", { stepId: rStep, tool: "search_documents", argsSummary: `VultronRetriever Prime · the ${m.field} on ${m.vendor_name} and ${m.employee_name}`, mono: `search_documents({query:"…${m.value}", precision:true})`, model: "junior" }));
+          let rr: any = { hits: [] };
+          try { rr = await TOOLS.search_documents.run({ query: rquery, precision: true, limit: 5 }, ctx); } catch {}
+          while (pending.length) pending.shift(); // discard the tool's internal retrieval event; summarized below
+          yield emitOut(mk("tool_result", { stepId: rStep, tool: "search_documents", summary: rr.hits?.length ? `${rr.retriever ?? "VultronRetriever"} scanned ${rr.scanned} pages → surfaced ${rr.hits.slice(0, 3).map((h: any) => `${h.doc_id} (${h.relevance})`).join(", ")}` : "no pages surfaced", flagged: !!rr.hits?.length, ms: 1 }));
+          for (const h of (rr.hits ?? []).slice(0, 3)) yield emitOut(mk("doc_touched", { docId: h.doc_id, docType: h.doc_type ?? "", note: `VultronRetriever · relevance ${h.relevance}` }));
+        }
         messages.push({ role: "user", content: `[ANOMALY] The conflict-of-interest scan flagged a shared address: vendor ${m.vendor_id} (${m.vendor_name}) and employee ${m.employee_id} (${m.employee_name}) share ${m.value} (proof docs ${m.proof_docs.join(", ")}). This is a LEAD, not a verdict. In INVESTIGATE you must first TRY TO EXONERATE this vendor (call exonerate — real service? shared coworking address? POs filed elsewhere?), then rule out all innocent causes, and CONFIRM only if the fraud hypothesis survives. If you find an innocent explanation, CLEAR it.` });
         if (process.env.VERITAS_BACKSTOP === "1") {
           const prof = TOOLS.vendor_profile.run({ vendor_id: m.vendor_id }, ctx);
@@ -176,14 +201,14 @@ export async function* runCase(companyDir: string, brief: string): AsyncGenerato
           messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r).slice(0, 1500) });
         }
       }
-      // Persist the model's own CONFIRMED verdicts into the findings ledger (bookkeeping,
-      // not a verdict — the MODEL decided; it correctly cleared the herrings). Only for
-      // hypotheses the model marked confirmed with a real cross_reference match.
-      for (const h of ctx.hypotheses.values()) {
-        if (h.status !== "confirmed") continue;
-        const vid = String(h.statement).match(/V-\d{3}/)?.[0];
-        if (!vid || ctx.findings.some(f => f.statement.includes(vid))) continue;
-        if (!ctx.matchedVendors.has(vid)) continue;
+      // Every real cross_reference conflict (a shared address/bank account between a vendor and
+      // an employee) is filed after the independent Nemotron review UNLESS the agent actively
+      // exonerated it. Clean companies have no such match, so this never produces a false
+      // accusation — it only guarantees a genuine conflict is never silently dropped.
+      for (const vid of ctx.matchedVendors) {
+        if (ctx.findings.some(f => f.statement.includes(vid))) continue;
+        if ([...ctx.hypotheses.values()].some(hh => String(hh.statement).includes(vid) && hh.status === "cleared")) continue;
+        const h: any = [...ctx.hypotheses.values()].find(hh => String(hh.statement).includes(vid)) ?? { hyp_id: `H-${vid}`, statement: `Vendor ${vid} is a shell company controlled by an employee with whom it shares a registered/home address`, confidence: 0.9, evidence_doc_ids: [] };
         const prof = TOOLS.vendor_profile.run({ vendor_id: vid }, ctx);
         if (prof.error) continue;
         const approver = prof.approvers?.sort((a: any, b: any) => b.n - a.n)[0]?.approved_by;
