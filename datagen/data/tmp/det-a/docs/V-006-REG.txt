@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-006
-Registered Name: Orion Systems
-Registered Address: 226 LBS Marg, Navi Mumbai 400703
-GSTIN: 278681838463C
-Bank Account (masked): XX269496
-Category: Travel
-Onboarded: 2020-03-01

@@ -46,7 +46,18 @@ function StepRow({ st }: { st: Step }) {
       </div>
       <div className="font-semibold text-[15.5px] leading-snug">{st.title}</div>
       {st.reasoning && <div className={`text-ink-60 text-[14.5px] leading-relaxed mt-1.5 max-w-[640px] ${st.live ? "caret" : ""}`}>{st.reasoning}</div>}
-      {st.tools.map((t, i) => (
+      {st.tools.map((t, i) => t.tool === "nemotron_verify" ? (
+        <div key={i} className="flex items-start gap-3 border rounded-[13px] px-4 py-3 mt-3 max-w-[600px]" style={{ background: "#F3F9E8", borderColor: "#B5D96A" }}>
+          <div className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#76B900" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M4 6h6a5 5 0 015 5v7H4V6zm2 2v8h7v-5a3 3 0 00-3-3H6z"/><path d="M14 6h6v12h-2V8h-4V6z"/></svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold" style={{ color: "#4a7300" }}>NVIDIA Nemotron · independent second examiner</div>
+            {t.summary && <div className={`text-[13px] leading-relaxed mt-1 ${t.flagged ? "text-crimson font-semibold" : "text-ink"}`}>{t.summary}</div>}
+            {!t.done && <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: "#76B900" }}><span className="w-3 h-3 rounded-full border-2 animate-spin" style={{ borderColor: "#D6EBB0", borderTopColor: "#76B900" }} /> reviewing the finding…</div>}
+          </div>
+        </div>
+      ) : (
         <div key={i} className="flex items-center gap-3 bg-[#FBFBF6] border border-line rounded-[13px] px-4 py-2.5 mt-3 max-w-[560px]">
           <div className="w-8 h-8 rounded-[9px] bg-gold-t flex items-center justify-center shrink-0"><ToolIcon tool={t.tool} /></div>
           <div className="min-w-0">

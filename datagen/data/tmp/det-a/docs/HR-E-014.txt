@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-014
-Name: Kavya Bose
-Role: Procurement Manager
-Home Address: 270 Hill Road, Mumbai 400069
-Date of Joining: 2018-08-19

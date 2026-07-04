@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-011
-Registered Name: Quantum Textiles
-Registered Address: 254 Andheri Kurla Road, Mumbai 400050
-GSTIN: 276121738921C
-Bank Account (masked): XX453638
-Category: Travel
-Onboarded: 2024-08-01

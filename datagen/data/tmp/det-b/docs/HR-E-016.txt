@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-016
-Name: Sanjay Malhotra
-Role: Finance Controller
-Home Address: 29 Linking Road, Mumbai 400050
-Date of Joining: 2022-01-19

@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-046
-Registered Name: Lotus Systems
-Registered Address: 261 Ghodbunder Road, Mumbai 400050
-GSTIN: 272060591006C
-Bank Account (masked): XX389888
-Category: Office Supplies
-Onboarded: 2020-10-01

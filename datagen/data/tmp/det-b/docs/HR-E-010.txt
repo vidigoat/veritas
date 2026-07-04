@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-010
-Name: Ritu Malhotra
-Role: Admin Executive
-Home Address: 324 Andheri Kurla Road, Pune 411001
-Date of Joining: 2023-10-16

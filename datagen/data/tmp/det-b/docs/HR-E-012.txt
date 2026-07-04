@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-012
-Name: Amit Nair
-Role: Quality Lead
-Home Address: 191 Ghodbunder Road, Navi Mumbai 400703
-Date of Joining: 2018-05-23

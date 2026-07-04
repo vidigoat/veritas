@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-037
-Registered Name: Falcon Textiles
-Registered Address: 378 FC Road, Mumbai 400050
-GSTIN: 271296068043C
-Bank Account (masked): XX769757
-Category: Packaging
-Onboarded: 2021-11-01

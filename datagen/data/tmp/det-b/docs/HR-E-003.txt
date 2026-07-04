@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-003
-Name: Arjun Mehta
-Role: Finance Controller
-Home Address: 388 Palm Beach Road, Mumbai 400069
-Date of Joining: 2018-05-02

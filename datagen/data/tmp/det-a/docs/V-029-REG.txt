@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-029
-Registered Name: Meridian Freight
-Registered Address: 267 Andheri Kurla Road, Mumbai 400069
-GSTIN: 272579946238C
-Bank Account (masked): XX543809
-Category: Packaging
-Onboarded: 2024-11-01

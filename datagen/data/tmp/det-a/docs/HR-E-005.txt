@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-005
-Name: Nisha Nair
-Role: Warehouse Supervisor
-Home Address: 35 MG Road, Navi Mumbai 400703
-Date of Joining: 2020-09-13

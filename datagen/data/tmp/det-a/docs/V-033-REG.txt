@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-033
-Registered Name: Prism Freight
-Registered Address: 230 LBS Marg, Navi Mumbai 400703
-GSTIN: 276006766916C
-Bank Account (masked): XX820912
-Category: Packaging
-Onboarded: 2023-10-01

@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-022
-Registered Name: Sapphire Print Works
-Registered Address: 317 Hill Road, Mumbai 400069
-GSTIN: 271664749305C
-Bank Account (masked): XX148638
-Category: Marketing
-Onboarded: 2019-06-01

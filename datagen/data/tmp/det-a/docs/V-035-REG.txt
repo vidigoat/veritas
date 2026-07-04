@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-035
-Registered Name: Apex Logistics
-Registered Address: 240 MG Road, Pune 411001
-GSTIN: 278733229256C
-Bank Account (masked): XX987968
-Category: Raw Materials
-Onboarded: 2022-09-01

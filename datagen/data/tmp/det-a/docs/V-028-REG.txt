@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-028
-Registered Name: Horizon Industries
-Registered Address: 342 Juhu Tara Road, Mumbai 400050
-GSTIN: 277847299945C
-Bank Account (masked): XX628165
-Category: Equipment
-Onboarded: 2023-12-01

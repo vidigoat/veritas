@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-019
-Registered Name: Vertex Traders
-Registered Address: 18 Palm Beach Road, Navi Mumbai 400703
-GSTIN: 276729598019C
-Bank Account (masked): XX296687
-Category: Marketing
-Onboarded: 2019-05-01

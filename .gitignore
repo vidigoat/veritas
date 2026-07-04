@@ -11,3 +11,17 @@ coverage/
 data/out/
 .gstack/
 web/out/
+
+# internal planning docs — never public
+PLAN*.md
+plan*.md
+specs.md
+design-system.md
+*-internal*
+/docs/
+
+# generated data (regenerate with `pnpm datagen`)
+datagen/data/
+evals/results/
+server/fixtures/
+!web/public/demo-run.json

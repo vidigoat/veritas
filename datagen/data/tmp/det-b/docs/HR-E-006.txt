@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-006
-Name: Rajesh Malhotra
-Role: Sales Manager
-Home Address: 268 Linking Road, Pune 411001
-Date of Joining: 2024-11-27

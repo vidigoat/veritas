@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-044
-Registered Name: Summit Industries
-Registered Address: 6 Sion Trombay Road, Pune 411001
-GSTIN: 275359252823C
-Bank Account (masked): XX567549
-Category: Utilities
-Onboarded: 2023-12-01

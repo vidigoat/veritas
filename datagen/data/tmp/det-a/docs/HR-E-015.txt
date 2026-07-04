@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-015
-Name: Meera Nair
-Role: Procurement Manager
-Home Address: 66 Carter Road, Mumbai 400001
-Date of Joining: 2023-10-06

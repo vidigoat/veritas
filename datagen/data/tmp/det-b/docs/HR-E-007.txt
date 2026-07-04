@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-007
-Name: Aditya Malhotra
-Role: HR Manager
-Home Address: 258 SV Road, Mumbai 400069
-Date of Joining: 2020-09-24

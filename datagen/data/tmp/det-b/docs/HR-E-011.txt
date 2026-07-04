@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-011
-Name: Aditya Iyer
-Role: Quality Lead
-Home Address: 216 SV Road, Mumbai 400050
-Date of Joining: 2023-09-02

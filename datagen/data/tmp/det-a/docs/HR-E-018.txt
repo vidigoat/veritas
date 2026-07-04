@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-018
-Name: Shreya Singh
-Role: Operations Head
-Home Address: 239 Linking Road, Pune 411001
-Date of Joining: 2019-10-17

@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-009
-Name: Sneha Mehta
-Role: Logistics Coordinator
-Home Address: 97 Andheri Kurla Road, Pune 411001
-Date of Joining: 2020-08-21

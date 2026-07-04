@@ -1,6 +1,0 @@
-EMPLOYEE RECORD (HR CONFIDENTIAL)
-Employee ID: E-001
-Name: Nisha Sharma
-Role: Procurement Manager
-Home Address: 81 Linking Road, Navi Mumbai 400703
-Date of Joining: 2020-04-21

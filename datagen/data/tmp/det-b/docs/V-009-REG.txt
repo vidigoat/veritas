@@ -1,8 +1,0 @@
-VENDOR MASTER RECORD
-Vendor ID: V-009
-Registered Name: Horizon Components
-Registered Address: 12 SV Road, Pune 411001
-GSTIN: 271855346462C
-Bank Account (masked): XX187392
-Category: Packaging
-Onboarded: 2023-04-01
