@@ -1,0 +1,18 @@
+EVEREST SUPPLIES
+130 Sion Trombay Road, Thane 400601
+GSTIN: 279060930913C
+
+TAX INVOICE
+Invoice No: V-004-INV-0242
+Date: 2026-01-13
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Everest Supplies — professional services
+Purchase Order: PO-31747
+
+Amount: 6748.86
+GST (18%): 1214.80
+TOTAL: 7963.66
+
+Payment terms: Net 30
+Bank: XX212250

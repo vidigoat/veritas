@@ -1,0 +1,18 @@
+PRISM FREIGHT
+230 LBS Marg, Navi Mumbai 400703
+GSTIN: 276006766916C
+
+TAX INVOICE
+Invoice No: V-033-INV-1634
+Date: 2025-11-23
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Prism Freight — packaging
+Purchase Order: PO-51033
+
+Amount: 13737.37
+GST (18%): 2472.73
+TOTAL: 16210.10
+
+Payment terms: Net 30
+Bank: XX820912

@@ -1,0 +1,18 @@
+HORIZON INDUSTRIES
+342 Juhu Tara Road, Mumbai 400050
+GSTIN: 277847299945C
+
+TAX INVOICE
+Invoice No: V-028-INV-1351
+Date: 2025-11-22
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Horizon Industries — equipment
+Purchase Order: PO-40534
+
+Amount: 7869.57
+GST (18%): 1416.52
+TOTAL: 9286.09
+
+Payment terms: Net 30
+Bank: XX628165

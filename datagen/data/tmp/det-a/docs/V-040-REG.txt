@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-040
+Registered Name: Horizon Systems
+Registered Address: 178 Sion Trombay Road, Mumbai 400069
+GSTIN: 275764470159C
+Bank Account (masked): XX187486
+Category: Freight & Logistics
+Onboarded: 2021-11-01

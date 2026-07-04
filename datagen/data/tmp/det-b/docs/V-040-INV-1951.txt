@@ -1,0 +1,18 @@
+HORIZON SYSTEMS
+178 Sion Trombay Road, Mumbai 400069
+GSTIN: 275764470159C
+
+TAX INVOICE
+Invoice No: V-040-INV-1951
+Date: 2025-04-02
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Horizon Systems — freight & logistics
+Purchase Order: PO-20818
+
+Amount: 18924.06
+GST (18%): 3406.33
+TOTAL: 22330.39
+
+Payment terms: Net 45
+Bank: XX187486

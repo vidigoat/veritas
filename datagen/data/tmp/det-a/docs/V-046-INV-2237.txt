@@ -1,0 +1,18 @@
+LOTUS SYSTEMS
+261 Ghodbunder Road, Mumbai 400050
+GSTIN: 272060591006C
+
+TAX INVOICE
+Invoice No: V-046-INV-2237
+Date: 2025-07-28
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Lotus Systems — office supplies
+Purchase Order: PO-77073
+
+Amount: 1778.84
+GST (18%): 320.19
+TOTAL: 2099.03
+
+Payment terms: Net 45
+Bank: XX389888

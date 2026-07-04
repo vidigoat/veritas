@@ -1,0 +1,18 @@
+SAPPHIRE TRADERS
+9 FC Road, Mumbai 400001
+GSTIN: 276006469523C
+
+TAX INVOICE
+Invoice No: V-038-INV-1879
+Date: 2025-07-05
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Sapphire Traders — packaging
+Purchase Order: PO-96282
+
+Amount: 16957.30
+GST (18%): 3052.31
+TOTAL: 20009.61
+
+Payment terms: Net 30
+Bank: XX281975

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-042
+Registered Name: Zenith Traders
+Registered Address: 1 Juhu Tara Road, Thane 400601
+GSTIN: 277001028900C
+Bank Account (masked): XX357416
+Category: Marketing
+Onboarded: 2022-10-01

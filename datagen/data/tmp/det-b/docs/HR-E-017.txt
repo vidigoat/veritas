@@ -1,0 +1,6 @@
+EMPLOYEE RECORD (HR CONFIDENTIAL)
+Employee ID: E-017
+Name: Sneha Nair
+Role: Finance Controller
+Home Address: 387 Hill Road, Mumbai 400001
+Date of Joining: 2018-05-05

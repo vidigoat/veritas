@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-036
+Registered Name: Quantum Industries
+Registered Address: 62 Hill Road, Thane 400601
+GSTIN: 276779963689C
+Bank Account (masked): XX241268
+Category: Professional Services
+Onboarded: 2019-01-01

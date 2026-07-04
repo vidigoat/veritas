@@ -1,0 +1,18 @@
+APEX CHEMICALS
+65 Juhu Tara Road, Thane 400601
+GSTIN: 275618579873C
+
+TAX INVOICE
+Invoice No: V-021-INV-1035
+Date: 2025-12-24
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Apex Chemicals — travel
+Purchase Order: PO-81938
+
+Amount: 7988.09
+GST (18%): 1437.86
+TOTAL: 9425.95
+
+Payment terms: Net 15
+Bank: XX252759

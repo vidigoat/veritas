@@ -1,0 +1,18 @@
+APEX SOLUTIONS
+197 FC Road, Mumbai 400050
+GSTIN: 271896986103C
+
+TAX INVOICE
+Invoice No: V-012-INV-0564
+Date: 2025-10-05
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Apex Solutions — raw materials
+Purchase Order: PO-19591
+
+Amount: 10957.86
+GST (18%): 1972.41
+TOTAL: 12930.27
+
+Payment terms: Net 30
+Bank: XX168200

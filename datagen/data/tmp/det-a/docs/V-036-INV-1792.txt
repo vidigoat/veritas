@@ -1,0 +1,18 @@
+QUANTUM INDUSTRIES
+62 Hill Road, Thane 400601
+GSTIN: 276779963689C
+
+TAX INVOICE
+Invoice No: V-036-INV-1792
+Date: 2025-08-20
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Quantum Industries — professional services
+Purchase Order: PO-35541
+
+Amount: 4874.60
+GST (18%): 877.43
+TOTAL: 5752.03
+
+Payment terms: Net 15
+Bank: XX241268

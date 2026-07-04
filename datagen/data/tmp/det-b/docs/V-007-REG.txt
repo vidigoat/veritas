@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-007
+Registered Name: Nova Packaging
+Registered Address: 5 Andheri Kurla Road, Mumbai 400050
+GSTIN: 277452820452C
+Bank Account (masked): XX450314
+Category: Utilities
+Onboarded: 2024-07-01

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-010
+Registered Name: Titan Chemicals
+Registered Address: 115 SV Road, Thane 400601
+GSTIN: 277968112593C
+Bank Account (masked): XX908788
+Category: Professional Services
+Onboarded: 2024-09-01

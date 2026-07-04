@@ -1,0 +1,18 @@
+DELTA PRINT WORKS
+374 LBS Marg, Mumbai 400069
+GSTIN: 275789718702C
+
+TAX INVOICE
+Invoice No: V-043-INV-2098
+Date: 2026-01-13
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Delta Print Works — marketing
+Purchase Order: PO-16921
+
+Amount: 15362.58
+GST (18%): 2765.27
+TOTAL: 18127.85
+
+Payment terms: Net 45
+Bank: XX805262

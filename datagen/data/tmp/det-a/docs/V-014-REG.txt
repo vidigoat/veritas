@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-014
+Registered Name: Nova Freight
+Registered Address: 156 Juhu Tara Road, Mumbai 400050
+GSTIN: 276277884601C
+Bank Account (masked): XX623595
+Category: Marketing
+Onboarded: 2019-10-01

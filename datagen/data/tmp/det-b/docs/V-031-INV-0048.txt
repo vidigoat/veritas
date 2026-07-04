@@ -1,0 +1,18 @@
+APEX SUPPLIES
+258 SV Road, Mumbai 400069
+GSTIN: [not provided]
+
+TAX INVOICE
+Invoice No: V-031-INV-0048
+Date: 2025-10-14
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Apex Supplies — consulting & procurement support
+Purchase Order: —
+
+Amount: 21144.07
+GST (18%): 3805.93
+TOTAL: 24950.00
+
+Payment terms: Net 30
+Bank: XX402030

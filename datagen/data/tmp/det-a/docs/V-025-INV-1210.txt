@@ -1,0 +1,18 @@
+MERIDIAN COMPONENTS
+224 LBS Marg, Navi Mumbai 400703
+GSTIN: 279802598528C
+
+TAX INVOICE
+Invoice No: V-025-INV-1210
+Date: 2025-05-15
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Meridian Components — facilities maintenance
+Purchase Order: PO-22509
+
+Amount: 11252.81
+GST (18%): 2025.50
+TOTAL: 13278.31
+
+Payment terms: Net 15
+Bank: XX763595

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-015
+Registered Name: Lotus Packaging
+Registered Address: 163 Hill Road, Navi Mumbai 400703
+GSTIN: 273704818301C
+Bank Account (masked): XX312651
+Category: Professional Services
+Onboarded: 2024-06-01

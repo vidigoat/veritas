@@ -1,0 +1,18 @@
+TITAN ENTERPRISES
+164 Linking Road, Navi Mumbai 400703
+GSTIN: 273767551032C
+
+TAX INVOICE
+Invoice No: V-020-INV-0972
+Date: 2025-12-05
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Titan Enterprises — facilities maintenance
+Purchase Order: PO-63799
+
+Amount: 7546.29
+GST (18%): 1358.33
+TOTAL: 8904.62
+
+Payment terms: Net 30
+Bank: XX320885

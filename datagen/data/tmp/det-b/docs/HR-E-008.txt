@@ -1,0 +1,6 @@
+EMPLOYEE RECORD (HR CONFIDENTIAL)
+Employee ID: E-008
+Name: Vikram Gupta
+Role: Quality Lead
+Home Address: 98 Andheri Kurla Road, Navi Mumbai 400703
+Date of Joining: 2024-03-14

@@ -1,0 +1,53 @@
+{
+  "seed": 777,
+  "scheme": {
+    "type": "shell_company",
+    "vendorId": "V-031",
+    "employeeId": "E-007",
+    "totalUsd": 332472,
+    "txnIds": [
+      "TXN-02288",
+      "TXN-02289",
+      "TXN-02290",
+      "TXN-02291",
+      "TXN-02292",
+      "TXN-02293",
+      "TXN-02294",
+      "TXN-02295",
+      "TXN-02296",
+      "TXN-02297",
+      "TXN-02298",
+      "TXN-02299",
+      "TXN-02300",
+      "TXN-02301"
+    ],
+    "proofDocIds": [
+      "V-031-REG",
+      "HR-E-007"
+    ]
+  },
+  "herrings": [
+    {
+      "kind": "duplicate_payment_reversed",
+      "txnIds": [
+        "TXN-02302",
+        "TXN-02303"
+      ],
+      "clearingDocIds": [
+        "CR-TXN-02302"
+      ],
+      "explanation": "Duplicate entry was caught and reversed 3 days later — accounting correction, not fraud."
+    },
+    {
+      "kind": "round_capex_authorized",
+      "txnIds": [
+        "TXN-02304"
+      ],
+      "clearingDocIds": [
+        "BOARD-MIN-2025-08",
+        "PO-77001"
+      ],
+      "explanation": "Large round amount, but fully PO-backed and authorized in the August board minutes."
+    }
+  ]
+}

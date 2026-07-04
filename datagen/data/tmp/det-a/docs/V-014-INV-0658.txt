@@ -1,0 +1,18 @@
+NOVA FREIGHT
+156 Juhu Tara Road, Mumbai 400050
+GSTIN: 276277884601C
+
+TAX INVOICE
+Invoice No: V-014-INV-0658
+Date: 2025-09-09
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Nova Freight — marketing
+Purchase Order: PO-61010
+
+Amount: 19456.42
+GST (18%): 3502.15
+TOTAL: 22958.57
+
+Payment terms: Net 45
+Bank: XX623595

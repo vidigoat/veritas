@@ -1,0 +1,18 @@
+HORIZON COMPONENTS
+12 SV Road, Pune 411001
+GSTIN: 271855346462C
+
+TAX INVOICE
+Invoice No: V-009-INV-0447
+Date: 2026-02-20
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Horizon Components — packaging
+Purchase Order: PO-17188
+
+Amount: 8051.43
+GST (18%): 1449.26
+TOTAL: 9500.69
+
+Payment terms: Net 45
+Bank: XX187392

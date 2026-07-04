@@ -1,0 +1,18 @@
+SUMMIT INDUSTRIES
+6 Sion Trombay Road, Pune 411001
+GSTIN: 275359252823C
+
+TAX INVOICE
+Invoice No: V-044-INV-2119
+Date: 2025-08-25
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Summit Industries — utilities
+Purchase Order: PO-97552
+
+Amount: 1366.87
+GST (18%): 246.04
+TOTAL: 1612.91
+
+Payment terms: Net 45
+Bank: XX567549

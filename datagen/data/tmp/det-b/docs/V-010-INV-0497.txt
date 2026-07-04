@@ -1,0 +1,18 @@
+TITAN CHEMICALS
+115 SV Road, Thane 400601
+GSTIN: 277968112593C
+
+TAX INVOICE
+Invoice No: V-010-INV-0497
+Date: 2025-11-12
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Titan Chemicals — professional services
+Purchase Order: PO-61232
+
+Amount: 9987.46
+GST (18%): 1797.74
+TOTAL: 11785.20
+
+Payment terms: Net 15
+Bank: XX908788

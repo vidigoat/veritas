@@ -1,0 +1,18 @@
+ORION SYSTEMS
+226 LBS Marg, Navi Mumbai 400703
+GSTIN: 278681838463C
+
+TAX INVOICE
+Invoice No: V-006-INV-0291
+Date: 2025-05-11
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Orion Systems — travel
+Purchase Order: PO-10889
+
+Amount: 4379.19
+GST (18%): 788.26
+TOTAL: 5167.45
+
+Payment terms: Net 15
+Bank: XX269496

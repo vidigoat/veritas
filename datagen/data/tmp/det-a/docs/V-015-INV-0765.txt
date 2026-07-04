@@ -1,0 +1,18 @@
+LOTUS PACKAGING
+163 Hill Road, Navi Mumbai 400703
+GSTIN: 273704818301C
+
+TAX INVOICE
+Invoice No: V-015-INV-0765
+Date: 2026-03-14
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Lotus Packaging — professional services
+Purchase Order: PO-65334
+
+Amount: 12009.03
+GST (18%): 2161.63
+TOTAL: 14170.66
+
+Payment terms: Net 15
+Bank: XX312651

@@ -1,0 +1,18 @@
+CASCADE SUPPLIES
+279 Carter Road, Mumbai 400001
+GSTIN: 275867569355C
+
+TAX INVOICE
+Invoice No: V-013-INV-0627
+Date: 2026-02-24
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Cascade Supplies — professional services
+Purchase Order: PO-19298
+
+Amount: 1711.72
+GST (18%): 308.11
+TOTAL: 2019.83
+
+Payment terms: Net 45
+Bank: XX305203

@@ -1,0 +1,18 @@
+QUANTUM TEXTILES
+254 Andheri Kurla Road, Mumbai 400050
+GSTIN: 276121738921C
+
+TAX INVOICE
+Invoice No: V-011-INV-0536
+Date: 2025-07-04
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Quantum Textiles — travel
+Purchase Order: —
+
+Amount: 11655.97
+GST (18%): 2098.08
+TOTAL: 13754.05
+
+Payment terms: Net 15
+Bank: XX453638

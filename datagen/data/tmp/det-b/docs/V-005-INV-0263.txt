@@ -1,0 +1,18 @@
+SAPPHIRE COMPONENTS
+157 LBS Marg, Mumbai 400069
+GSTIN: 271422842848C
+
+TAX INVOICE
+Invoice No: V-005-INV-0263
+Date: 2025-05-21
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Sapphire Components — equipment
+Purchase Order: PO-93337
+
+Amount: 12039.94
+GST (18%): 2167.19
+TOTAL: 14207.13
+
+Payment terms: Net 15
+Bank: XX573534

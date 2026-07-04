@@ -1,0 +1,18 @@
+FALCON PACKAGING
+255 Hill Road, Mumbai 400001
+GSTIN: 279436378889C
+
+TAX INVOICE
+Invoice No: V-026-INV-1298
+Date: 2026-03-13
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Falcon Packaging — office supplies
+Purchase Order: PO-57271
+
+Amount: 10984.36
+GST (18%): 1977.18
+TOTAL: 12961.54
+
+Payment terms: Net 15
+Bank: XX770563

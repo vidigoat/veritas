@@ -1,0 +1,18 @@
+ZENITH COMPONENTS
+366 Hill Road, Mumbai 400069
+GSTIN: 275798619783C
+
+TAX INVOICE
+Invoice No: V-016-INV-0773
+Date: 2025-05-08
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Zenith Components — facilities maintenance
+Purchase Order: PO-55944
+
+Amount: 19270.25
+GST (18%): 3468.64
+TOTAL: 22738.89
+
+Payment terms: Net 30
+Bank: XX301885

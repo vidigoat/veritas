@@ -1,0 +1,6 @@
+EMPLOYEE RECORD (HR CONFIDENTIAL)
+Employee ID: E-013
+Name: Arjun Gupta
+Role: Finance Controller
+Home Address: 298 Sion Trombay Road, Thane 400601
+Date of Joining: 2020-02-24

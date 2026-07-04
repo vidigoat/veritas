@@ -1,0 +1,18 @@
+ZENITH TEXTILES
+308 Ghodbunder Road, Mumbai 400001
+GSTIN: 273128877003C
+
+TAX INVOICE
+Invoice No: V-030-INV-1458
+Date: 2025-08-08
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Zenith Textiles — facilities maintenance
+Purchase Order: PO-95061
+
+Amount: 11070.17
+GST (18%): 1992.63
+TOTAL: 13062.80
+
+Payment terms: Net 45
+Bank: XX764781

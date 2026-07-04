@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-024
+Registered Name: Titan Textiles
+Registered Address: 355 FC Road, Mumbai 400001
+GSTIN: 274405681785C
+Bank Account (masked): XX930271
+Category: Equipment
+Onboarded: 2020-01-01

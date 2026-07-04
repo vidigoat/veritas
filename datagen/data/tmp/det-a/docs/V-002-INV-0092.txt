@@ -1,0 +1,18 @@
+ORION FREIGHT
+90 FC Road, Navi Mumbai 400703
+GSTIN: 276223842856C
+
+TAX INVOICE
+Invoice No: V-002-INV-0092
+Date: 2026-01-24
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Orion Freight — raw materials
+Purchase Order: PO-62737
+
+Amount: 19381.95
+GST (18%): 3488.75
+TOTAL: 22870.70
+
+Payment terms: Net 30
+Bank: XX368701

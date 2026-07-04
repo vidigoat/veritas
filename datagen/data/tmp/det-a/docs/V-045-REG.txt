@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-045
+Registered Name: Vertex Chemicals
+Registered Address: 48 MG Road, Pune 411001
+GSTIN: 275522763728C
+Bank Account (masked): XX688977
+Category: Office Supplies
+Onboarded: 2020-03-01

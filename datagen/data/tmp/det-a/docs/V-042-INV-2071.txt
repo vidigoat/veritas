@@ -1,0 +1,18 @@
+ZENITH TRADERS
+1 Juhu Tara Road, Thane 400601
+GSTIN: 277001028900C
+
+TAX INVOICE
+Invoice No: V-042-INV-2071
+Date: 2026-03-23
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Zenith Traders — marketing
+Purchase Order: PO-97432
+
+Amount: 15081.71
+GST (18%): 2714.71
+TOTAL: 17796.42
+
+Payment terms: Net 45
+Bank: XX357416

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-003
+Registered Name: Nova Services
+Registered Address: 196 Hill Road, Mumbai 400050
+GSTIN: 274919393661C
+Bank Account (masked): XX467616
+Category: Equipment
+Onboarded: 2021-12-01

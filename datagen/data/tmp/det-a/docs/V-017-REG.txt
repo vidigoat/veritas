@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-017
+Registered Name: Lotus Print Works
+Registered Address: 3 Andheri Kurla Road, Mumbai 400050
+GSTIN: 275303829815C
+Bank Account (masked): XX201428
+Category: Freight & Logistics
+Onboarded: 2024-04-01

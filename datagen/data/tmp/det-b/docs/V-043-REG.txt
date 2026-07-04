@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-043
+Registered Name: Delta Print Works
+Registered Address: 374 LBS Marg, Mumbai 400069
+GSTIN: 275789718702C
+Bank Account (masked): XX805262
+Category: Marketing
+Onboarded: 2023-03-01

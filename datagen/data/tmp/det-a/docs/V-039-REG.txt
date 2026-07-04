@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-039
+Registered Name: Pioneer Logistics
+Registered Address: 38 Andheri Kurla Road, Navi Mumbai 400703
+GSTIN: 274602189516C
+Bank Account (masked): XX236653
+Category: Packaging
+Onboarded: 2023-11-01

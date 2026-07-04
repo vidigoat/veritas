@@ -1,0 +1,18 @@
+DELTA FREIGHT
+292 Linking Road, Thane 400601
+GSTIN: 277263548366C
+
+TAX INVOICE
+Invoice No: V-027-INV-1317
+Date: 2025-11-25
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Delta Freight — raw materials
+Purchase Order: PO-46952
+
+Amount: 5776.73
+GST (18%): 1039.81
+TOTAL: 6816.54
+
+Payment terms: Net 45
+Bank: XX670534

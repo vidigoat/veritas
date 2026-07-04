@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-031
+Registered Name: Apex Supplies
+Registered Address: 258 SV Road, Mumbai 400069
+GSTIN: [not provided]
+Bank Account (masked): XX402030
+Category: Professional Services
+Onboarded: 2025-04-15

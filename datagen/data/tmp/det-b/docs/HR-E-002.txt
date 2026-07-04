@@ -1,0 +1,6 @@
+EMPLOYEE RECORD (HR CONFIDENTIAL)
+Employee ID: E-002
+Name: Sanjay Chopra
+Role: Accounts Payable Clerk
+Home Address: 296 Ghodbunder Road, Mumbai 400001
+Date of Joining: 2022-07-26

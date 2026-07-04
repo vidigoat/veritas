@@ -1,0 +1,18 @@
+MERIDIAN FREIGHT
+267 Andheri Kurla Road, Mumbai 400069
+GSTIN: 272579946238C
+
+TAX INVOICE
+Invoice No: V-029-INV-1372
+Date: 2025-04-04
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Meridian Freight — packaging
+Purchase Order: PO-17102
+
+Amount: 12304.12
+GST (18%): 2214.74
+TOTAL: 14518.86
+
+Payment terms: Net 15
+Bank: XX543809

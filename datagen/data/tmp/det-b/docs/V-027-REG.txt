@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-027
+Registered Name: Delta Freight
+Registered Address: 292 Linking Road, Thane 400601
+GSTIN: 277263548366C
+Bank Account (masked): XX670534
+Category: Raw Materials
+Onboarded: 2024-03-01

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-023
+Registered Name: Falcon Components
+Registered Address: 397 LBS Marg, Pune 411001
+GSTIN: 279000673396C
+Bank Account (masked): XX911695
+Category: Equipment
+Onboarded: 2022-10-01

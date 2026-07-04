@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-025
+Registered Name: Meridian Components
+Registered Address: 224 LBS Marg, Navi Mumbai 400703
+GSTIN: 279802598528C
+Bank Account (masked): XX763595
+Category: Facilities Maintenance
+Onboarded: 2024-12-01

@@ -1,0 +1,18 @@
+SAPPHIRE PRINT WORKS
+317 Hill Road, Mumbai 400069
+GSTIN: 271664749305C
+
+TAX INVOICE
+Invoice No: V-022-INV-1062
+Date: 2025-04-12
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Sapphire Print Works — marketing
+Purchase Order: PO-88702
+
+Amount: 3405.64
+GST (18%): 613.02
+TOTAL: 4018.66
+
+Payment terms: Net 30
+Bank: XX148638

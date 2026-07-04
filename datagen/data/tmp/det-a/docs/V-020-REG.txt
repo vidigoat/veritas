@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-020
+Registered Name: Titan Enterprises
+Registered Address: 164 Linking Road, Navi Mumbai 400703
+GSTIN: 273767551032C
+Bank Account (masked): XX320885
+Category: Facilities Maintenance
+Onboarded: 2019-12-01

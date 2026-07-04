@@ -1,0 +1,18 @@
+VERTEX TRADERS
+18 Palm Beach Road, Navi Mumbai 400703
+GSTIN: 276729598019C
+
+TAX INVOICE
+Invoice No: V-019-INV-0929
+Date: 2025-09-15
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Vertex Traders — marketing
+Purchase Order: PO-37056
+
+Amount: 3367.15
+GST (18%): 606.09
+TOTAL: 3973.24
+
+Payment terms: Net 30
+Bank: XX296687

@@ -1,0 +1,18 @@
+SUMMIT PRINT WORKS
+367 SV Road, Mumbai 400001
+GSTIN: 271029767006C
+
+TAX INVOICE
+Invoice No: V-041-INV-2009
+Date: 2025-11-25
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Summit Print Works — marketing
+Purchase Order: PO-92827
+
+Amount: 9937.37
+GST (18%): 1788.73
+TOTAL: 11726.10
+
+Payment terms: Net 15
+Bank: XX498817

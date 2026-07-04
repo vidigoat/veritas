@@ -1,0 +1,185 @@
+MERIDIAN TRADERS PVT LTD — BANK STATEMENT 2025-08
+Account: XX88276351
+
+2025-08-01  TXN-00127  DR  7804.65  Nova Services — equipment
+2025-08-01  TXN-00308  DR  1605.65  Orion Systems — travel
+2025-08-01  TXN-00374  DR  20517.86  Nova Packaging — utilities
+2025-08-01  TXN-00375  DR  10052.69  Nova Packaging — utilities
+2025-08-01  TXN-00721  DR  7953.09  Lotus Packaging — professional services
+2025-08-01  TXN-01014  DR  936.12  Apex Chemicals — travel
+2025-08-01  TXN-01220  DR  21489.34  Meridian Components — facilities maintenance
+2025-08-01  TXN-01311  DR  19387.47  Delta Freight — raw materials
+2025-08-01  TXN-02038  DR  4494.27  Zenith Traders — marketing
+2025-08-01  TXN-02117  DR  12773.64  Summit Industries — utilities
+2025-08-01  TXN-02239  DR  19514.31  Lotus Systems — office supplies
+2025-08-02  TXN-00872  DR  10150.86  Delta Enterprises — equipment
+2025-08-02  TXN-01105  DR  1442.40  Falcon Components — equipment
+2025-08-02  TXN-01459  DR  16201.46  Zenith Textiles — facilities maintenance
+2025-08-02  TXN-01460  DR  10240.35  Zenith Textiles — facilities maintenance
+2025-08-02  TXN-01730  DR  6900.11  Apex Logistics — raw materials
+2025-08-02  TXN-02083  DR  6234.24  Delta Print Works — marketing
+2025-08-03  TXN-00312  DR  13661.17  Orion Systems — travel
+2025-08-03  TXN-00870  DR  18754.06  Delta Enterprises — equipment
+2025-08-03  TXN-01013  DR  22836.56  Apex Chemicals — travel
+2025-08-03  TXN-01509  DR  18854.12  Apex Supplies — professional services
+2025-08-03  TXN-01841  DR  7025.19  Falcon Textiles — packaging
+2025-08-03  TXN-02177  DR  1093.14  Vertex Chemicals — office supplies
+2025-08-04  TXN-00269  DR  3629.61  Sapphire Components — equipment
+2025-08-04  TXN-00311  DR  18238.19  Orion Systems — travel
+2025-08-04  TXN-00824  DR  5258.21  Lotus Print Works — freight & logistics
+2025-08-04  TXN-01262  DR  2612.27  Falcon Packaging — office supplies
+2025-08-04  TXN-01731  DR  2284.13  Apex Logistics — raw materials
+2025-08-04  TXN-01795  DR  21526.60  Quantum Industries — professional services
+2025-08-05  TXN-00654  DR  23139.47  Nova Freight — marketing
+2025-08-05  TXN-00720  DR  3617.78  Lotus Packaging — professional services
+2025-08-05  TXN-00823  DR  19101.82  Lotus Print Works — freight & logistics
+2025-08-05  TXN-00927  DR  6828.57  Vertex Traders — marketing
+2025-08-05  TXN-01840  DR  21408.70  Falcon Textiles — packaging
+2025-08-05  TXN-01919  DR  21040.34  Pioneer Logistics — packaging
+2025-08-05  TXN-02085  DR  6728.55  Delta Print Works — marketing
+2025-08-05  TXN-02265  DR  42000.00  Warehouse + office rent
+2025-08-06  TXN-00072  DR  9936.59  Orion Freight — raw materials
+2025-08-06  TXN-00484  DR  3926.94  Titan Chemicals — professional services
+2025-08-06  TXN-00596  DR  11498.54  Cascade Supplies — professional services
+2025-08-06  TXN-01011  DR  20792.06  Apex Chemicals — travel
+2025-08-06  TXN-01392  DR  8667.93  Meridian Freight — packaging
+2025-08-06  TXN-01726  DR  16011.89  Apex Logistics — raw materials
+2025-08-06  TXN-02118  DR  18445.03  Summit Industries — utilities
+2025-08-06  TXN-02181  DR  22484.12  Vertex Chemicals — office supplies
+2025-08-07  TXN-00071  DR  2550.98  Orion Freight — raw materials
+2025-08-07  TXN-00128  DR  12252.83  Nova Services — equipment
+2025-08-07  TXN-00478  DR  1773.25  Titan Chemicals — professional services
+2025-08-07  TXN-00719  DR  21286.97  Lotus Packaging — professional services
+2025-08-07  TXN-00928  DR  3847.38  Vertex Traders — marketing
+2025-08-07  TXN-01012  DR  6041.80  Apex Chemicals — travel
+2025-08-07  TXN-01310  DR  19153.34  Delta Freight — raw materials
+2025-08-07  TXN-01393  DR  4825.43  Meridian Freight — packaging
+2025-08-07  TXN-02180  DR  19995.17  Vertex Chemicals — office supplies
+2025-08-07  TXN-02292  DR  24950.00  Apex Supplies — consulting & procurement support
+2025-08-08  TXN-00407  DR  8001.87  Stellar Packaging — it & software
+2025-08-08  TXN-01168  DR  20809.85  Titan Textiles — equipment
+2025-08-08  TXN-01458  DR  13062.80  Zenith Textiles — facilities maintenance
+2025-08-08  TXN-02037  DR  12297.30  Zenith Traders — marketing
+2025-08-08  TXN-02182  DR  10132.05  Vertex Chemicals — office supplies
+2025-08-09  TXN-01068  DR  1441.52  Sapphire Print Works — marketing
+2025-08-09  TXN-01167  DR  15203.79  Titan Textiles — equipment
+2025-08-09  TXN-01626  DR  14010.14  Prism Freight — packaging
+2025-08-09  TXN-01842  DR  22714.62  Falcon Textiles — packaging
+2025-08-09  TXN-01967  DR  16421.23  Horizon Systems — freight & logistics
+2025-08-10  TXN-00020  DR  7733.34  Horizon Supplies — professional services
+2025-08-10  TXN-00480  DR  6916.59  Titan Chemicals — professional services
+2025-08-10  TXN-00485  DR  1961.41  Titan Chemicals — professional services
+2025-08-10  TXN-00717  DR  17460.07  Lotus Packaging — professional services
+2025-08-10  TXN-00962  DR  16496.45  Titan Enterprises — facilities maintenance
+2025-08-10  TXN-01342  DR  10625.10  Horizon Industries — equipment
+2025-08-10  TXN-01670  DR  9853.95  Crest Enterprises — it & software
+2025-08-10  TXN-01728  DR  5779.61  Apex Logistics — raw materials
+2025-08-10  TXN-02178  DR  18839.79  Vertex Chemicals — office supplies
+2025-08-10  TXN-02266  DR  8574.69  Electricity + water
+2025-08-11  TXN-00208  DR  23627.93  Everest Supplies — professional services
+2025-08-11  TXN-00310  DR  21832.54  Orion Systems — travel
+2025-08-11  TXN-00439  DR  20871.08  Horizon Components — packaging
+2025-08-11  TXN-00481  DR  12016.28  Titan Chemicals — professional services
+2025-08-11  TXN-00718  DR  20449.42  Lotus Packaging — professional services
+2025-08-11  TXN-00783  DR  14329.36  Zenith Components — facilities maintenance
+2025-08-11  TXN-01732  DR  11575.37  Apex Logistics — raw materials
+2025-08-12  TXN-00784  DR  18587.97  Zenith Components — facilities maintenance
+2025-08-12  TXN-01219  DR  20294.15  Meridian Components — facilities maintenance
+2025-08-12  TXN-01343  DR  20064.09  Horizon Industries — equipment
+2025-08-13  TXN-00210  DR  5512.80  Everest Supplies — professional services
+2025-08-13  TXN-00560  DR  10095.22  Apex Solutions — raw materials
+2025-08-13  TXN-00926  DR  4891.39  Vertex Traders — marketing
+2025-08-13  TXN-01104  DR  1205.45  Falcon Components — equipment
+2025-08-13  TXN-01729  DR  17275.64  Apex Logistics — raw materials
+2025-08-14  TXN-00132  DR  6107.88  Nova Services — equipment
+2025-08-14  TXN-01103  DR  16260.97  Falcon Components — equipment
+2025-08-14  TXN-01667  DR  22653.14  Crest Enterprises — it & software
+2025-08-14  TXN-01794  DR  21768.46  Quantum Industries — professional services
+2025-08-14  TXN-01843  DR  6855.34  Falcon Textiles — packaging
+2025-08-14  TXN-02116  DR  4850.21  Summit Industries — utilities
+2025-08-15  TXN-00373  DR  9539.54  Nova Packaging — utilities
+2025-08-15  TXN-01561  DR  20249.38  Lotus Services — utilities
+2025-08-16  TXN-00716  DR  8669.96  Lotus Packaging — professional services
+2025-08-17  TXN-00406  DR  2480.64  Stellar Packaging — it & software
+2025-08-17  TXN-00655  DR  1609.18  Nova Freight — marketing
+2025-08-17  TXN-00961  DR  3817.71  Titan Enterprises — facilities maintenance
+2025-08-17  TXN-01169  DR  13819.29  Titan Textiles — equipment
+2025-08-17  TXN-01394  DR  13484.22  Meridian Freight — packaging
+2025-08-17  TXN-01562  DR  19658.74  Lotus Services — utilities
+2025-08-17  TXN-01666  DR  22145.70  Crest Enterprises — it & software
+2025-08-17  TXN-02293  DR  24800.00  Apex Supplies — consulting & procurement support
+2025-08-18  TXN-00207  DR  17941.27  Everest Supplies — professional services
+2025-08-18  TXN-00309  DR  11871.37  Orion Systems — travel
+2025-08-18  TXN-00874  DR  20959.10  Delta Enterprises — equipment
+2025-08-18  TXN-01456  DR  4660.68  Zenith Textiles — facilities maintenance
+2025-08-18  TXN-01625  DR  4857.49  Prism Freight — packaging
+2025-08-18  TXN-01668  DR  16939.40  Crest Enterprises — it & software
+2025-08-18  TXN-01917  DR  13740.81  Pioneer Logistics — packaging
+2025-08-18  TXN-01969  DR  7934.19  Horizon Systems — freight & logistics
+2025-08-19  TXN-00482  DR  22784.77  Titan Chemicals — professional services
+2025-08-19  TXN-00599  DR  5877.04  Cascade Supplies — professional services
+2025-08-19  TXN-00873  DR  3507.36  Delta Enterprises — equipment
+2025-08-19  TXN-01264  DR  6559.91  Falcon Packaging — office supplies
+2025-08-19  TXN-01391  DR  18010.99  Meridian Freight — packaging
+2025-08-19  TXN-01507  DR  6527.87  Apex Supplies — professional services
+2025-08-20  TXN-01106  DR  19996.55  Falcon Components — equipment
+2025-08-20  TXN-01792  DR  5752.03  Quantum Industries — professional services
+2025-08-20  TXN-01918  DR  22959.37  Pioneer Logistics — packaging
+2025-08-21  TXN-00657  DR  21413.47  Nova Freight — marketing
+2025-08-21  TXN-01506  DR  13436.28  Apex Supplies — professional services
+2025-08-21  TXN-01508  DR  5378.00  Apex Supplies — professional services
+2025-08-22  TXN-00133  DR  19725.04  Nova Services — equipment
+2025-08-22  TXN-00408  DR  6529.84  Stellar Packaging — it & software
+2025-08-22  TXN-00559  DR  9887.00  Apex Solutions — raw materials
+2025-08-22  TXN-00561  DR  14894.54  Apex Solutions — raw materials
+2025-08-22  TXN-00715  DR  19560.93  Lotus Packaging — professional services
+2025-08-22  TXN-01016  DR  22299.18  Apex Chemicals — travel
+2025-08-22  TXN-01627  DR  4180.08  Prism Freight — packaging
+2025-08-22  TXN-01669  DR  4854.25  Crest Enterprises — it & software
+2025-08-22  TXN-02179  DR  22286.92  Vertex Chemicals — office supplies
+2025-08-22  TXN-02184  DR  5990.35  Vertex Chemicals — office supplies
+2025-08-22  TXN-02240  DR  23197.33  Lotus Systems — office supplies
+2025-08-23  TXN-00074  DR  18711.95  Orion Freight — raw materials
+2025-08-23  TXN-00129  DR  18891.49  Nova Services — equipment
+2025-08-23  TXN-00212  DR  20162.71  Everest Supplies — professional services
+2025-08-23  TXN-00483  DR  7913.41  Titan Chemicals — professional services
+2025-08-23  TXN-00656  DR  3299.17  Nova Freight — marketing
+2025-08-23  TXN-01015  DR  20606.71  Apex Chemicals — travel
+2025-08-23  TXN-01067  DR  22513.10  Sapphire Print Works — marketing
+2025-08-23  TXN-01563  DR  17943.30  Lotus Services — utilities
+2025-08-23  TXN-01564  DR  15672.06  Lotus Services — utilities
+2025-08-23  TXN-01796  DR  15288.12  Quantum Industries — professional services
+2025-08-24  TXN-00130  DR  3800.32  Nova Services — equipment
+2025-08-24  TXN-00209  DR  11739.88  Everest Supplies — professional services
+2025-08-24  TXN-00479  DR  8380.96  Titan Chemicals — professional services
+2025-08-25  TXN-00597  DR  6119.26  Cascade Supplies — professional services
+2025-08-25  TXN-00871  DR  15933.37  Delta Enterprises — equipment
+2025-08-25  TXN-00963  DR  6789.43  Titan Enterprises — facilities maintenance
+2025-08-25  TXN-01263  DR  10940.52  Falcon Packaging — office supplies
+2025-08-25  TXN-01265  DR  14391.39  Falcon Packaging — office supplies
+2025-08-25  TXN-02119  DR  1612.91  Summit Industries — utilities
+2025-08-25  TXN-02183  DR  20742.56  Vertex Chemicals — office supplies
+2025-08-26  TXN-00131  DR  1421.87  Nova Services — equipment
+2025-08-26  TXN-00313  DR  14288.73  Orion Systems — travel
+2025-08-26  TXN-00537  DR  10305.78  Quantum Textiles — travel
+2025-08-26  TXN-00598  DR  9276.32  Cascade Supplies — professional services
+2025-08-26  TXN-01344  DR  16478.78  Horizon Industries — equipment
+2025-08-26  TXN-01457  DR  11813.51  Zenith Textiles — facilities maintenance
+2025-08-26  TXN-02036  DR  7067.79  Zenith Traders — marketing
+2025-08-27  TXN-01109  DR  19219.10  Falcon Components — equipment
+2025-08-27  TXN-01560  DR  18721.89  Lotus Services — utilities
+2025-08-27  TXN-01793  DR  4511.73  Quantum Industries — professional services
+2025-08-28  TXN-00021  DR  20360.70  Horizon Supplies — professional services
+2025-08-28  TXN-00073  DR  4553.25  Orion Freight — raw materials
+2025-08-28  TXN-00211  DR  17026.34  Everest Supplies — professional services
+2025-08-28  TXN-00213  DR  8294.00  Everest Supplies — professional services
+2025-08-28  TXN-00268  DR  18789.51  Sapphire Components — equipment
+2025-08-28  TXN-00825  DR  11043.61  Lotus Print Works — freight & logistics
+2025-08-28  TXN-01107  DR  9306.05  Falcon Components — equipment
+2025-08-28  TXN-01108  DR  18976.18  Falcon Components — equipment
+2025-08-28  TXN-01221  DR  16788.86  Meridian Components — facilities maintenance
+2025-08-28  TXN-01727  DR  18331.22  Apex Logistics — raw materials
+2025-08-28  TXN-01968  DR  21830.16  Horizon Systems — freight & logistics
+2025-08-28  TXN-01970  DR  16336.54  Horizon Systems — freight & logistics
+2025-08-28  TXN-02084  DR  10078.85  Delta Print Works — marketing
+2025-08-28  TXN-02264  DR  203161.90  Monthly payroll

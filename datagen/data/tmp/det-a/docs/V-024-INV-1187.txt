@@ -1,0 +1,18 @@
+TITAN TEXTILES
+355 FC Road, Mumbai 400001
+GSTIN: 274405681785C
+
+TAX INVOICE
+Invoice No: V-024-INV-1187
+Date: 2025-12-07
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Titan Textiles — equipment
+Purchase Order: PO-19908
+
+Amount: 8838.95
+GST (18%): 1591.01
+TOTAL: 10429.96
+
+Payment terms: Net 30
+Bank: XX930271

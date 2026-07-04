@@ -1,0 +1,18 @@
+NOVA SERVICES
+196 Hill Road, Mumbai 400050
+GSTIN: 274919393661C
+
+TAX INVOICE
+Invoice No: V-003-INV-0159
+Date: 2026-01-25
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Nova Services — equipment
+Purchase Order: PO-41153
+
+Amount: 2063.69
+GST (18%): 371.47
+TOTAL: 2435.16
+
+Payment terms: Net 45
+Bank: XX467616

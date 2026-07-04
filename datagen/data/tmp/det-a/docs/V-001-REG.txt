@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-001
+Registered Name: Horizon Supplies
+Registered Address: 10 Hill Road, Thane 400601
+GSTIN: 271191925563C
+Bank Account (masked): XX677802
+Category: Professional Services
+Onboarded: 2020-04-01

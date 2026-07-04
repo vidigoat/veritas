@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-026
+Registered Name: Falcon Packaging
+Registered Address: 255 Hill Road, Mumbai 400001
+GSTIN: 279436378889C
+Bank Account (masked): XX770563
+Category: Office Supplies
+Onboarded: 2021-04-01

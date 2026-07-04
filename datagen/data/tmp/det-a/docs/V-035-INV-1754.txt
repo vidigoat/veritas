@@ -1,0 +1,18 @@
+APEX LOGISTICS
+240 MG Road, Pune 411001
+GSTIN: 278733229256C
+
+TAX INVOICE
+Invoice No: V-035-INV-1754
+Date: 2025-11-15
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Apex Logistics — raw materials
+Purchase Order: PO-96963
+
+Amount: 8891.85
+GST (18%): 1600.53
+TOTAL: 10492.38
+
+Payment terms: Net 15
+Bank: XX987968

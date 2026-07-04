@@ -1,0 +1,16 @@
+{
+  "name": "@veritas/datagen",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate": "tsx src/generate.ts",
+    "test": "tsx src/determinism.test.ts"
+  },
+  "dependencies": {
+    "@veritas/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}

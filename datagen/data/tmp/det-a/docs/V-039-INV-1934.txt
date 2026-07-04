@@ -1,0 +1,18 @@
+PIONEER LOGISTICS
+38 Andheri Kurla Road, Navi Mumbai 400703
+GSTIN: 274602189516C
+
+TAX INVOICE
+Invoice No: V-039-INV-1934
+Date: 2025-12-13
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Pioneer Logistics — packaging
+Purchase Order: PO-34936
+
+Amount: 20106.64
+GST (18%): 3619.19
+TOTAL: 23725.83
+
+Payment terms: Net 30
+Bank: XX236653

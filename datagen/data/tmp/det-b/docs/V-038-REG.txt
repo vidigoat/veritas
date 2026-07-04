@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-038
+Registered Name: Sapphire Traders
+Registered Address: 9 FC Road, Mumbai 400001
+GSTIN: 276006469523C
+Bank Account (masked): XX281975
+Category: Packaging
+Onboarded: 2020-06-01

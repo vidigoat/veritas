@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-013
+Registered Name: Cascade Supplies
+Registered Address: 279 Carter Road, Mumbai 400001
+GSTIN: 275867569355C
+Bank Account (masked): XX305203
+Category: Professional Services
+Onboarded: 2021-05-01

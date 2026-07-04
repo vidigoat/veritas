@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-012
+Registered Name: Apex Solutions
+Registered Address: 197 FC Road, Mumbai 400050
+GSTIN: 271896986103C
+Bank Account (masked): XX168200
+Category: Raw Materials
+Onboarded: 2022-02-01

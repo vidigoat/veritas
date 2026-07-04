@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-041
+Registered Name: Summit Print Works
+Registered Address: 367 SV Road, Mumbai 400001
+GSTIN: 271029767006C
+Bank Account (masked): XX498817
+Category: Marketing
+Onboarded: 2022-12-01

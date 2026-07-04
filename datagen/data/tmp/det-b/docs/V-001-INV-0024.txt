@@ -1,0 +1,18 @@
+HORIZON SUPPLIES
+10 Hill Road, Thane 400601
+GSTIN: 271191925563C
+
+TAX INVOICE
+Invoice No: V-001-INV-0024
+Date: 2025-09-14
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Horizon Supplies — professional services
+Purchase Order: —
+
+Amount: 10425.01
+GST (18%): 1876.50
+TOTAL: 12301.51
+
+Payment terms: Net 30
+Bank: XX677802

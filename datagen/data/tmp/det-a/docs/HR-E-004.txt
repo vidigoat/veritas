@@ -1,0 +1,6 @@
+EMPLOYEE RECORD (HR CONFIDENTIAL)
+Employee ID: E-004
+Name: Ritu Joshi
+Role: Operations Head
+Home Address: 267 Palm Beach Road, Mumbai 400001
+Date of Joining: 2021-01-08

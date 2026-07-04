@@ -1,0 +1,18 @@
+STELLAR PACKAGING
+222 MG Road, Mumbai 400050
+GSTIN: 274095715390C
+
+TAX INVOICE
+Invoice No: V-008-INV-0421
+Date: 2025-12-24
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Stellar Packaging — it & software
+Purchase Order: PO-42668
+
+Amount: 4178.53
+GST (18%): 752.14
+TOTAL: 4930.67
+
+Payment terms: Net 30
+Bank: XX729959

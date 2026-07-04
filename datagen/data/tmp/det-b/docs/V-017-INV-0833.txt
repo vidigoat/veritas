@@ -1,0 +1,18 @@
+LOTUS PRINT WORKS
+3 Andheri Kurla Road, Mumbai 400050
+GSTIN: 275303829815C
+
+TAX INVOICE
+Invoice No: V-017-INV-0833
+Date: 2025-12-07
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Lotus Print Works — freight & logistics
+Purchase Order: PO-12385
+
+Amount: 14013.30
+GST (18%): 2522.39
+TOTAL: 16535.69
+
+Payment terms: Net 45
+Bank: XX201428

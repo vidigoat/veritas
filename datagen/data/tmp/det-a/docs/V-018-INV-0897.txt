@@ -1,0 +1,18 @@
+DELTA ENTERPRISES
+256 Ghodbunder Road, Pune 411001
+GSTIN: 275100185210C
+
+TAX INVOICE
+Invoice No: V-018-INV-0897
+Date: 2025-12-17
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Delta Enterprises — equipment
+Purchase Order: PO-94067
+
+Amount: 867.76
+GST (18%): 156.20
+TOTAL: 1023.96
+
+Payment terms: Net 45
+Bank: XX533487

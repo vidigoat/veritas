@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-008
+Registered Name: Stellar Packaging
+Registered Address: 222 MG Road, Mumbai 400050
+GSTIN: 274095715390C
+Bank Account (masked): XX729959
+Category: IT & Software
+Onboarded: 2022-09-01

@@ -1,0 +1,18 @@
+VERTEX CHEMICALS
+48 MG Road, Pune 411001
+GSTIN: 275522763728C
+
+TAX INVOICE
+Invoice No: V-045-INV-2185
+Date: 2025-09-14
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Vertex Chemicals — office supplies
+Purchase Order: PO-28199
+
+Amount: 2587.19
+GST (18%): 465.70
+TOTAL: 3052.89
+
+Payment terms: Net 15
+Bank: XX688977

@@ -1,0 +1,6 @@
+CREDIT NOTE / REVERSAL RECORD
+Doc: CR-TXN-02302
+Reference: duplicate payment TXN-02302 to Apex Solutions
+Amount reversed: 9452.27
+Reason: duplicate entry identified during weekly reconciliation.
+Approved by: Finance Controller (E-003)

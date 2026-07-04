@@ -1,0 +1,18 @@
+FALCON COMPONENTS
+397 LBS Marg, Pune 411001
+GSTIN: 279000673396C
+
+TAX INVOICE
+Invoice No: V-023-INV-1112
+Date: 2025-09-09
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Falcon Components — equipment
+Purchase Order: PO-18085
+
+Amount: 11173.47
+GST (18%): 2011.22
+TOTAL: 13184.69
+
+Payment terms: Net 15
+Bank: XX911695

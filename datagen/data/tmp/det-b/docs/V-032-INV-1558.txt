@@ -1,0 +1,18 @@
+LOTUS SERVICES
+284 Hill Road, Mumbai 400069
+GSTIN: 276330797617C
+
+TAX INVOICE
+Invoice No: V-032-INV-1558
+Date: 2025-07-04
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Lotus Services — utilities
+Purchase Order: PO-72359
+
+Amount: 5392.08
+GST (18%): 970.57
+TOTAL: 6362.65
+
+Payment terms: Net 15
+Bank: XX950112

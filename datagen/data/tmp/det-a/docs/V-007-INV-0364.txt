@@ -1,0 +1,18 @@
+NOVA PACKAGING
+5 Andheri Kurla Road, Mumbai 400050
+GSTIN: 277452820452C
+
+TAX INVOICE
+Invoice No: V-007-INV-0364
+Date: 2025-05-02
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Nova Packaging — utilities
+Purchase Order: PO-53758
+
+Amount: 4831.65
+GST (18%): 869.70
+TOTAL: 5701.35
+
+Payment terms: Net 30
+Bank: XX450314

@@ -1,0 +1,8 @@
+VENDOR MASTER RECORD
+Vendor ID: V-032
+Registered Name: Lotus Services
+Registered Address: 284 Hill Road, Mumbai 400069
+GSTIN: 276330797617C
+Bank Account (masked): XX950112
+Category: Utilities
+Onboarded: 2022-07-01

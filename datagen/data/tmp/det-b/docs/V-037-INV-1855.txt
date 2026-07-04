@@ -1,0 +1,18 @@
+FALCON TEXTILES
+378 FC Road, Mumbai 400050
+GSTIN: 271296068043C
+
+TAX INVOICE
+Invoice No: V-037-INV-1855
+Date: 2025-12-26
+Bill To: Meridian Traders Pvt Ltd, 88 Industrial Estate, Bhiwandi 421302
+
+Description: Falcon Textiles — packaging
+Purchase Order: PO-16465
+
+Amount: 4335.29
+GST (18%): 780.35
+TOTAL: 5115.64
+
+Payment terms: Net 30
+Bank: XX769757
