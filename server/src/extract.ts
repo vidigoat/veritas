@@ -58,7 +58,12 @@ export async function augmentWithFleet(
   opts: { concurrency?: number; signal?: AbortSignal;
     onFleet?: (shards: number) => void; onDrone?: (i: number, docCount: number, found: number, ms: number) => void } = {},
 ): Promise<{ shards: number; facts: number; fleetFacts: number }> {
-  const docs = corpus.order.map(id => corpus.docs.get(id)!);
+  // stride-sample ACROSS the whole corpus (not the first N files) so the fleet's
+  // independent read genuinely spans invoices, statements, HR files, registrations
+  const all = corpus.order.map(id => corpus.docs.get(id)!);
+  const want = MAX_FLEET * DOCS_PER_SHARD;
+  const stride = Math.max(1, Math.floor(all.length / want));
+  const docs = all.filter((_, i) => i % stride === 0).slice(0, want);
   const shards = shard(docs, DOCS_PER_SHARD).slice(0, MAX_FLEET);
   opts.onFleet?.(shards.length);
   let fleetFacts = 0; // what the drones THEMSELVES extracted (honest attribution)

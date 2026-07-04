@@ -33,6 +33,7 @@ export interface CorpusState {
   fleet: { shards: number; done: number; drones: Drone[]; facts?: number; fleetFacts?: number; vendors?: number; employees?: number; txns?: number };
   brain?: { entities: number; facts: number; links: number };
   anomalies: Anomaly[];
+  noAnomalies?: boolean;
   reveals: { label: string; subjectIds: string[]; scheme: string }[];
   steps: Step[];
   findings: Finding[];
@@ -40,7 +41,7 @@ export interface CorpusState {
   unproven: { anomaly?: Anomaly }[];
   verdict?: { findings: number; total: number; confidence: number; cleared: number };
   usage?: { usd: number };
-  freezes: { target: string; receiptId?: string }[];
+  freezes: { target: string; receiptId?: string; failed?: boolean }[];
   seen?: Set<string>;
 }
 const init: CorpusState = { status: "idle", fleet: { shards: 0, done: 0, drones: [] }, anomalies: [], reveals: [], steps: [], findings: [], cleared: [], unproven: [], qa: [], freezes: [] };
@@ -67,11 +68,12 @@ function reduce(s: CorpusState, ev: any): CorpusState {
     case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total, company: p.company ?? s.corpus?.company }, status: "running" };
     case "phase": return { ...s, phase: p };
     case "plan": return { ...s, plan: { steps: p.steps ?? [], model: p.model } };
-    case "fleet_start": return { ...s, fleet: { ...s.fleet, shards: p.shards, drones: [] } };
+    case "fleet_start": return { ...s, fleet: { ...s.fleet, shards: p.shards, done: 0, drones: [] } };
     case "drone_done": return { ...s, fleet: { ...s.fleet, done: s.fleet.done + 1, drones: [...s.fleet.drones, { i: p.i, docs: p.docs, found: p.found }] } };
     case "fleet_done": return { ...s, fleet: { ...s.fleet, facts: p.facts, fleetFacts: p.fleetFacts, vendors: p.vendors, employees: p.employees, txns: p.txns, done: p.shards, shards: p.shards } };
     case "brain_update": return { ...s, brain: p };
     case "anomaly": return { ...s, anomalies: [...s.anomalies, p.anomaly] };
+    case "no_anomalies": return { ...s, noAnomalies: true };
     case "reveal": return { ...s, reveals: [...s.reveals, p] };
     case "reasoning": return upStep(p.stepId, st => { st.scheme = p.scheme ?? st.scheme; if (p.text) st.items.push({ kind: "text", text: p.text }); if (p.verdict) st.verdict = p.verdict; });
     case "retrieval": return upStep(p.stepId, st => { st.items.push({ kind: "retrieval", r: { model: p.model, candidates: p.candidates, query: p.query, followup: p.followup, surfaced: p.surfaced } }); });
@@ -80,7 +82,8 @@ function reduce(s: CorpusState, ev: any): CorpusState {
     case "unproven": return { ...s, unproven: [...s.unproven, { anomaly: p.anomaly }] };
     case "finding": return { ...s, findings: [...s.findings, p.finding] };
     case "freeze_request": return s.freezes.some(f => f.target === p.target) ? s : { ...s, freezes: [...s.freezes, { target: p.target }] };
-    case "action_executed": return { ...s, freezes: s.freezes.map(f => f.target === p.target ? { ...f, receiptId: p.receiptId ?? "approved" } : f) };
+    case "action_executed": return { ...s, freezes: s.freezes.map(f => f.target === p.target ? { ...f, receiptId: p.receiptId ?? "approved", failed: false } : f) };
+    case "action_failed": return { ...s, freezes: s.freezes.map(f => f.target === p.target ? { ...f, failed: true } : f) };
     case "verdict": return { ...s, verdict: p };
     case "usage": return { ...s, usage: { usd: p.usd ?? p.usdTotal } };
     case "done": return { ...s, status: "done", verdict: s.verdict ?? { findings: p.findings, total: p.total, confidence: 0, cleared: s.cleared.length }, usage: { usd: p.usd } };
@@ -123,10 +126,10 @@ export function useCorpus() {
   }, []);
 
   // upload File[] (or use the bundled demo corpus)
-  const upload = useCallback(async (files: File[]): Promise<{ caseId: string; total: number } | null> => {
-    dispatch({ type: "corpus_loaded", payload: { stats: {}, total: files.length } } as any);
+  const upload = useCallback(async (files: File[]): Promise<{ caseId: string; total: number } | { error: string } | null> => {
     const payload = await Promise.all(files.slice(0, 5000).map(async f => ({ name: f.name, text: await f.text().catch(() => "") })));
-    const r = await fetch(`${API}/api/v2/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files: payload }) }).then(r => r.json()).catch(() => null);
+    const r = await fetch(`${API}/api/v2/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files: payload }) }).then(r => r.json()).catch(() => ({ error: "The engine is unreachable — start it and try again." }));
+    if (r?.error) return { error: String(r.error) };
     if (!r?.caseId) return null;
     caseId.current = r.caseId; return { caseId: r.caseId, total: r.total };
   }, []);
@@ -149,8 +152,16 @@ export function useCorpus() {
   }, []);
 
   const runLive = useCallback(async (cid?: string) => {
+    const usedUpload = !!(cid ?? caseId.current);
     const r = await fetch(`${API}/api/v2/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseId: cid ?? caseId.current }) }).then(r => r.json()).catch(() => null);
-    if (!r?.caseId) { await runReplay(); return; }  // engine down → replay the recording
+    if (!r?.caseId) {
+      // the engine answered with a real error (capacity/limit) → say so, honestly
+      if (r?.error) { dispatch({ type: "error", payload: { message: r.error } } as any); return; }
+      // network-dead + the user's OWN books: replaying another company's recording would lie
+      if (usedUpload) { dispatch({ type: "error", payload: { message: "The engine is unreachable, so your uploaded books can't be examined right now." } } as any); return; }
+      await runReplay();  // demo path only: engine down → replay the recording
+      return;
+    }
     caseId.current = r.caseId;
     try { sessionStorage.setItem("veritas-case", r.caseId); } catch {}
     consume(`${API}/api/v2/run/${r.caseId}/events`);
@@ -158,12 +169,14 @@ export function useCorpus() {
 
   // refresh-proof: if a run was in flight, reattach to its event log (server replays from 0)
   const resume = useCallback(async (): Promise<boolean> => {
+    if (caseId.current) return false;                    // a run is already active — never clobber it
     let cid: string | null = null;
     try { cid = sessionStorage.getItem("veritas-case"); } catch {}
     if (!cid) return false;
     // liveness check — a restarted engine no longer knows this case
     const alive = await fetch(`${API}/api/v2/run/${cid}/report`).then(r => r.status !== 404).catch(() => false);
     if (!alive) { try { sessionStorage.removeItem("veritas-case"); } catch {} return false; }
+    if (caseId.current) return false;                    // the user started a new run while we checked
     caseId.current = cid;
     consume(`${API}/api/v2/run/${cid}/events`);
     return true;
@@ -202,10 +215,12 @@ export function useCorpus() {
     return fetch(`${API}/api/v2/doc/${cid}/${encodeURIComponent(docId)}`).then(r => r.ok ? r.json() : null).catch(() => null);
   }, []);
 
-  // approve a freeze — a REAL backend action that returns a receipt
+  // approve a freeze — a REAL backend action that returns a receipt.
+  // No receipt without the backend: a fabricated receipt would be a lie on screen.
   const approve = useCallback(async (target: string) => {
     const r = await fetch(`${API}/api/v2/run/${caseId.current}/approve`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target }) }).then(r => r.ok ? r.json() : null).catch(() => null);
-    dispatch({ type: "action_executed", payload: { target, receiptId: r?.receiptId ?? "FRZ-LOCAL" } } as any);
+    if (r?.receiptId) dispatch({ type: "action_executed", payload: { target, receiptId: r.receiptId } } as any);
+    else dispatch({ type: "action_failed", payload: { target } } as any);
   }, []);
 
   return { state, upload, runLive, runReplay, resume, ask, openDoc, approve, caseId };

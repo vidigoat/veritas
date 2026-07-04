@@ -74,7 +74,8 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     `The books of ${company}${brief ? ` — engagement brief: ${brief}` : ""}: ${corpus.total} documents (${statLine}). What is your examination plan?`,
     { tier: "senior", maxTokens: 500, expectKeys: ["plan"], timeoutMs: 25000, noThink: true },
   );
-  const plan = planRes.data?.plan?.slice(0, 5) ?? [
+  const planRaw = Array.isArray(planRes.data?.plan) ? planRes.data.plan.filter((s: any) => s && typeof s.step === "string").slice(0, 5) : [];
+  const plan = planRaw.length ? planRaw : [
     { step: "Reconstruct the entity graph from the documents", why: "every verdict needs the cast of characters" },
     { step: "Cross-reference vendor and employee identities", why: "shells hide in shared addresses and accounts" },
     { step: "Sweep payments for duplicates and structuring", why: "the statistical tells of a billing scheme" },
@@ -133,8 +134,19 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   emit(mk("phase", { phase, index: 5, of: 6, title: "Investigate + Verify" }));
   const top = anomalies.slice(0, 6);
 
+  // any unexpected throw inside an investigation must still resolve the step on
+  // screen — fail-safe to "unproven", never a silent stuck card, never an accusation
   const investigateOne = async (a: Anomaly): Promise<void> => {
     const stepId = randomUUID().slice(0, 6);
+    try {
+      await investigateInner(a, stepId);
+    } catch {
+      emit(mk("reasoning", { stepId, text: `Unproven — the examination of "${a.title}" hit an internal error; escalated for manual review.`, verdict: "unproven" }, "investigate"));
+      emit(mk("unproven", { anomaly: a }, "investigate"));
+    }
+  };
+
+  const investigateInner = async (a: Anomaly, stepId: string): Promise<void> => {
     emit(mk("reasoning", { stepId, text: `Investigating: ${a.title}`, scheme: a.scheme }, "investigate"));
 
     // ── RETRIEVE №1 — the anomaly's own evidence (VultronRetriever) ──
@@ -160,9 +172,9 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     // ── RETRIEVE №2 — the agent's OWN follow-up query, to test the innocent explanation ──
     const cand2 = queryCandidates(corpus, String(hyp.followup_query ?? ""), a);
     let ranked2: { docId: string; text: string; score: number }[] = [];
-    try { ranked2 = await rerank(String(hyp.followup_query), cand2, { topN: 4, tier: "prime" }); }
+    try { ranked2 = await rerank(String(hyp.followup_query), cand2, { topN: 4, tier: decisive ? "prime" : "core" }); }
     catch { ranked2 = cand2.slice(0, 4).map(c => ({ docId: c.docId, text: c.text, score: 0 })); }
-    emit(mk("retrieval", { stepId, model: "VultronRetriever Prime", followup: true, query: String(hyp.followup_query).slice(0, 90), candidates: cand2.length, surfaced: ranked2.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
+    emit(mk("retrieval", { stepId, model: decisive ? "VultronRetriever Prime" : "VultronRetriever Core", followup: true, query: String(hyp.followup_query).slice(0, 90), candidates: cand2.length, surfaced: ranked2.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
     const seen1 = new Set(ranked.map(r => r.docId));
     const evidence2 = ranked2.filter(r => !seen1.has(r.docId)).map(r => `--- ${r.docId} ---\n${excerptFor(r.text, needles, 1200)}`).join("\n\n");
 
@@ -182,19 +194,23 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     // narrative but cannot erase the fact. Everything else — including the
     // un-reversed duplicate — is genuinely decided by the model + Nemotron panel.
     const ironclad = a.strength >= IRONCLAD;
-    // a duplicate the ledger already REVERSED (a matching credit note → amount 0) is
-    // a caught error, not a loss: dispositively CLEARED. The LLM narrates the why.
+    // a deterministically REVERSED duplicate (a matching credit note → amount 0) can
+    // never be FILED as fraud — the model may clear or escalate it, but a "confirmed"
+    // here would be a false accusation, so the structural guard downgrades it.
     const reversedHerring = a.scheme === "duplicate_payment" && (a.amount ?? 0) === 0;
-    const verdict: string = ironclad ? "confirmed" : reversedHerring ? "cleared" : (v.verdict ?? "unproven");
+    const modelVerdict = v.verdict ?? "unproven";
+    const verdict: string = ironclad ? "confirmed" : reversedHerring ? (modelVerdict === "confirmed" ? "cleared" : modelVerdict) : modelVerdict;
     emit(mk("reasoning", { stepId, text: v.reasoning || v.statement || `${verdict === "confirmed" ? "Confirmed" : verdict === "cleared" ? "Cleared" : "Unproven"} — ${a.title}.`, verdict }, "investigate"));
     if (verdict === "cleared") { cleared.push(a); emit(mk("cleared", { anomaly: a, why: reversedHerring ? "A matching credit note reverses this payment three days later — a caught accounting error, not a loss." : (v.reasoning ?? "innocent explanation holds") }, "investigate")); return; }
     if (verdict !== "confirmed") { emit(mk("unproven", { anomaly: a }, "investigate")); return; }
 
     // ── VERIFY: Nemotron independent panel (3 lenses, in parallel) ──
+    const evRaw = Array.isArray(v.evidence) && v.evidence.length ? v.evidence : [{ claim: a.detail, doc_ids: a.proofDocs }];
+    const confNum = Number(v.confidence);
     const candidate = {
-      id: `F-${++fid}`, scheme: a.scheme, statement: v.statement || a.detail, amount: a.amount ?? 0,
-      evidence: (v.evidence?.length ? v.evidence : [{ claim: a.detail, doc_ids: a.proofDocs }]).map((e: any) => ({ claim: e.claim, doc_ids: e.docIds ?? e.doc_ids ?? a.proofDocs })),
-      confidence: +Math.max(v.confidence ?? a.strength, a.strength).toFixed(2),
+      id: `F-${++fid}`, scheme: a.scheme, statement: (typeof v.statement === "string" && v.statement) || a.detail, amount: a.amount ?? 0,
+      evidence: evRaw.filter((e: any) => e && typeof e === "object").map((e: any) => ({ claim: String(e.claim ?? a.detail), doc_ids: Array.isArray(e.docIds) ? e.docIds : Array.isArray(e.doc_ids) ? e.doc_ids : a.proofDocs })),
+      confidence: +Math.max(Number.isFinite(confNum) ? confNum : a.strength, a.strength).toFixed(2),
     };
     emit(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, lenses: ["correctness", "innocent explanation", "sufficiency"] }, "investigate"));
     const panel = await nemotronPanel(candidate as any);
@@ -213,10 +229,12 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     if (a.scheme === "shell_company" || a.scheme === "ghost_employee") emit(mk("freeze_request", { target: a.subjectIds[0] }, "investigate"));
   };
 
-  // drain the channel until BOTH the fleet and every investigation have settled
+  // drain the channel until BOTH the fleet and every investigation have settled.
+  // Settle on FAILURE too — a rejection must never leave the generator awaiting
+  // `wake` forever (or die as an unhandled rejection) mid-demo.
   let settled = false;
-  Promise.all([fleetTask, fanOut(top, a => investigateOne(a), { concurrency: 4 })])
-    .then(() => { settled = true; const w = wake; wake = null; w?.(); });
+  const onSettle = () => { settled = true; const w = wake; wake = null; w?.(); };
+  Promise.all([fleetTask, fanOut(top, a => investigateOne(a), { concurrency: 4 })]).then(onSettle, onSettle);
   while (true) {
     if (chan.length) { yield chan.shift()!; continue; }
     if (settled) break;

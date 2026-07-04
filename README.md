@@ -79,7 +79,9 @@ visible on screen for every anomaly:
 ```
         PLAN            the examiner reads the corpus stats and states its plan (Qwen, per-upload)
           │
-        READ            parser reconstructs the books; a Nemotron drone fleet reads shards in parallel
+        READ            a deterministic parser reconstructs 100% of the books (that's why numbers
+          │             can't hallucinate); a Nemotron drone fleet independently samples shards
+          │             across the corpus in parallel as an AI cross-check
           │
         CROSS-REFERENCE addresses · bank accounts · tax IDs — exact-string identity matches
           │
@@ -113,8 +115,9 @@ CORE REASONING       →  Qwen3.6-27B  (Qwen3.5-397B fallback)             (/v1/
    writes the plan, the hypotheses, the follow-up queries, and every verdict.
    Chosen by a live bake-off — scripts/bakeoff-results.md.
 INDEPENDENT VERIFIER →  NVIDIA Nemotron-Cascade-2                        (/v1/chat/completions)
-   a second model family reviews every finding through 3 adversarial lenses, and a
-   Nemotron drone fleet reads document shards in parallel during ingest.
+   a second model family reviews every finding through 3 adversarial lenses — with NO
+   fallback to the examiner's model, by design — and a Nemotron drone fleet samples
+   document shards across the corpus in parallel as an independent read.
 BACKEND + CONSOLE    →  one Vultr Cloud Compute VM serves both            (see DEPLOY.md)
 ```
 
@@ -125,7 +128,9 @@ The false-accusation guards are structural, and they are **fail-safe, not fail-o
 - **Exact-string evidence for identity findings.** A shell-company finding requires a
   character-for-character address or bank-account match between real documents. No fuzzy vibes.
 - **Every anomaly gets a defense counsel.** The examiner must name the innocent explanation
-  and retrieve against it before any verdict. Credit note reverses the duplicate? **Cleared.**
+  and retrieve against it before any verdict. And a duplicate the ledger already reversed
+  with a credit note can structurally never be *filed* — the guard only ever blocks
+  accusations, never creates them.
 - **A hiccup never accuses.** If the reasoning model is unreachable, soft leads file as
   *unproven — escalated*, never as fraud. If a Nemotron reviewer errors, it **abstains** — an
   abstention never upholds an accusation.
@@ -145,10 +150,13 @@ The false-accusation guards are structural, and they are **fail-safe, not fail-o
 ## The independent verifier
 
 No finding is filed on one model's say-so. Every confirmed finding faces a panel of three
-**NVIDIA Nemotron-Cascade-2** reviewers — a different model family from the examiner, so their
-blind spots don't correlate — each attacking from one lens: *correctness*, *the innocent
-explanation*, *evidentiary sufficiency*. Majority of answered votes decides; abstentions never
-uphold. A refuted soft lead is cleared on the spot.
+**NVIDIA Nemotron-Cascade-2** reviewers — a different model family from the examiner, with
+**no fallback to the examiner's model**, so their blind spots don't correlate — each attacking
+from one lens: *correctness*, *the innocent explanation*, *evidentiary sufficiency*. Majority
+of answered votes decides; abstentions never uphold. A refuted soft lead is cleared on the
+spot. The one thing a panel cannot do is erase exact-string document evidence: an identity
+finding proven by a character-for-character match files even over an objection — and the
+objection is recorded on the finding, on screen and in the report.
 
 <div align="center">
 <img src="assets/screenshots/03-nemotron.png" width="860" alt="The Nemotron panel reviews the shell-company finding through three lenses — and the agent's own follow-up retrieval above it" />

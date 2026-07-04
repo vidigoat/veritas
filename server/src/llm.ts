@@ -21,9 +21,11 @@ export const MODELS: Record<ModelTier, string> = {
   judge: "nvidia/Nemotron-Cascade-2-30B-A3B",     // panel + fleet (NVIDIA, compulsory)
   drone: "nvidia/Nemotron-Cascade-2-30B-A3B",     // the AI reading fleet (no-think)
 };
+// NOTE: judge/drone (Nemotron) deliberately has NO fallback — the verifier's
+// independence is the point. If Nemotron is unreachable the reviewer ABSTAINS;
+// it is never silently replaced by the examiner's own model family.
 const FALLBACK: Record<string, string> = {
   "Qwen/Qwen3.6-27B": "Qwen/Qwen3.5-397B-A17B",
-  "nvidia/Nemotron-Cascade-2-30B-A3B": "Qwen/Qwen3.6-27B",
 };
 // $/1M tokens (from live catalog)
 const PRICE: Record<string, [number, number]> = {
@@ -72,7 +74,9 @@ export async function chat(tier: ModelTier, messages: ChatMsg[], tools?: ToolDef
       return { message: msg as ChatMsg, model, ms: Date.now() - t0, usage: { in: u.prompt_tokens ?? 0, out: u.completion_tokens ?? 0, usd: spend.usd } };
     } catch (e: any) {
       lastErr = e;
-      if (e.name === "TimeoutError") { if (attempt === 1 && FALLBACK[model]) model = FALLBACK[model]; continue; }
+      // a full timeout already burned the clock once — allow ONE more attempt
+      // (with failover if available), never four. Live demos need a bounded worst case.
+      if (e.name === "TimeoutError") { if (attempt >= 1) break; if (FALLBACK[model]) model = FALLBACK[model]; continue; }
       if (attempt >= 3) break;
       await new Promise(res => setTimeout(res, 600 * (attempt + 1)));
     }

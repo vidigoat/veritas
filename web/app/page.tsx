@@ -28,13 +28,15 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
   async function onFiles(files: FileList | null) {
     if (!files?.length) return;
-    setUploading(true); setEmptyPick(false);
+    setUploading(true); setEmptyPick(false); setUploadErr(null);
     const arr = Array.from(files).filter(f => /\.(txt|csv|md|tsv|log)$/i.test(f.name) && !/manifest\.json$/i.test(f.name));
     if (!arr.length) { setUploading(false); setEmptyPick(true); return; }
     const res = await upload(arr);
     setUploading(false);
+    if (res && "error" in res) { setUploadErr(res.error); return; }
     if (res && res.total > 0) setUploaded({ total: res.total });
     else setEmptyPick(true);
   }
@@ -77,6 +79,7 @@ export default function Home() {
                 </button>
                 <span className="text-[12.5px] text-ink-50 max-w-[440px]">Pick the folder of files &mdash; invoices, bank statements, payroll, HR records as text, CSV, or markdown exports (PDF OCR is on the roadmap). It reads them for real and cites every finding.</span>
                 {emptyPick && <span className="text-[12.5px] text-crimson">That folder had no readable documents (.txt / .csv / .md) &mdash; pick the folder that contains the books.</span>}
+                {uploadErr && <span className="text-[12.5px] text-crimson">{uploadErr}</span>}
                 <input ref={fileRef} type="file" multiple {...({ webkitdirectory: "", directory: "" } as any)} className="hidden" onChange={e => onFiles(e.target.files)} />
                 <div className="flex items-center gap-3 mt-2">
                   <div className="h-px w-16 bg-line" /><span className="text-[11.5px] text-ink-30">or</span><div className="h-px w-16 bg-line" />

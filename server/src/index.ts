@@ -29,12 +29,17 @@ const runs = new Map<string, Run>();
 
 const app = new Hono();
 app.use("*", cors());
-app.get("/api/health", c => c.json({ ok: true, runs: runs.size }));
+app.get("/api/health", c => c.json({ ok: true, runs: runs.size + v2runs.size }));
+
+// localhost = the actual SOCKET peer, never the client-controlled Host header
+const isLocalPeer = (c: any): boolean => {
+  const addr: string = (c.env as any)?.incoming?.socket?.remoteAddress ?? "";
+  return addr === "127.0.0.1" || addr === "::1" || addr.startsWith("::ffff:127.");
+};
 
 app.post("/api/case", async c => {
   const body = await c.req.json().catch(() => ({}));
-  const isLocal = (c.req.header("host") ?? "").startsWith("localhost") || (c.req.header("host") ?? "").startsWith("127.");
-  if (!isLocal && env("DEMO_ACCESS_KEY") && body.key !== env("DEMO_ACCESS_KEY")) return c.json({ error: "live runs need ?key — public visitors: use demo mode" }, 403);
+  if (!isLocalPeer(c) && env("DEMO_ACCESS_KEY") && body.key !== env("DEMO_ACCESS_KEY")) return c.json({ error: "live runs need ?key — public visitors: use demo mode" }, 403);
   const id = Math.random().toString(36).slice(2, 8);
   const run: Run = { id, events: [], done: false };
   runs.set(id, run);
@@ -71,7 +76,7 @@ function sseStream(getEvents: () => CaseEvent[], isDone: () => boolean, after = 
 app.get("/api/case/:id/events", c => {
   const run = runs.get(c.req.param("id"));
   if (!run) return c.json({ error: "run not found" }, 404);
-  const after = parseInt(c.req.query("after") ?? "0");
+  const after = Math.max(0, parseInt(c.req.query("after") ?? "0") || 0);
   return new Response(sseStream(() => run.events, () => run.done, after), { headers: sseHeaders });
 });
 
@@ -116,8 +121,7 @@ app.get("/api/demo/events", c => {
 
 // fixture recorder: run once, save events (localhost only — it burns real inference)
 app.post("/api/record-fixture", async c => {
-  const host = c.req.header("host") ?? "";
-  if (!host.startsWith("localhost") && !host.startsWith("127.")) return c.json({ error: "localhost only" }, 403);
+  if (!isLocalPeer(c)) return c.json({ error: "localhost only" }, 403);
   const gen = runCase(join(ROOT, "datagen/data/out/meridian"), ENGAGEMENT);
   const evs: CaseEvent[] = [];
   while (true) { const { value, done } = await gen.next(); if (done) break; evs.push(value); }
@@ -168,16 +172,24 @@ const getCorpus = (dir: string) => {
 };
 
 // upload a folder of a company's books → returns caseId + corpus stats
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB of books is plenty for a demo VM
 app.post("/api/v2/upload", async c => {
+  const len = parseInt(c.req.header("content-length") ?? "0") || 0;
+  if (len > MAX_UPLOAD_BYTES) return c.json({ error: "upload too large (50 MB max)" }, 413);
   const body = await c.req.json().catch(() => ({} as any));
   const files: { name: string; text?: string; base64?: string }[] = body.files ?? [];
   if (!files.length) return c.json({ error: "no files" }, 400);
   const id = Math.random().toString(36).slice(2, 8);
   const dir = join(UPLOADS, id);
   try { mkdirSync(dir, { recursive: true }); } catch {}
+  let written = 0;
   for (const f of files.slice(0, 5000)) {
     const text = f.text ?? (f.base64 ? Buffer.from(f.base64, "base64").toString("utf8") : "");
-    try { wf(join(dir, f.name.replace(/[^\w.\-]/g, "_")), text); } catch {}
+    written += text.length;
+    if (written > MAX_UPLOAD_BYTES) break;
+    const name = f.name.replace(/[^\w.\-]/g, "_");
+    if (!name || name === "." || name === "..") continue;
+    try { wf(join(dir, name), text); } catch {}
   }
   const corpus = ingestDir(dir);
   return c.json({ caseId: id, stats: corpus.stats, total: corpus.total });
@@ -189,7 +201,9 @@ const ipRuns = new Map<string, number[]>();
 app.post("/api/v2/run", async c => {
   const live = [...v2runs.values()].filter(r => !r.done).length;
   if (live >= 3) return c.json({ error: "the engine is at capacity — try again in a minute" }, 429);
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  // key on the SOCKET address (the VM serves :8787 directly — XFF would be spoofable)
+  const ip = (c.env as any)?.incoming?.socket?.remoteAddress
+    || c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   const hist = (ipRuns.get(ip) ?? []).filter(t => Date.now() - t < 3600_000);
   if (hist.length >= 12) return c.json({ error: "hourly examination limit reached for this address" }, 429);
   hist.push(Date.now()); ipRuns.set(ip, hist);
@@ -210,7 +224,7 @@ app.post("/api/v2/run", async c => {
 app.get("/api/v2/run/:id/events", c => {
   const run = v2runs.get(c.req.param("id"));
   if (!run) return c.json({ error: "run not found" }, 404);
-  const after = parseInt(c.req.query("after") ?? "0");
+  const after = Math.max(0, parseInt(c.req.query("after") ?? "0") || 0);
   return new Response(sseStream(() => run.events, () => run.done, after), { headers: sseHeaders });
 });
 

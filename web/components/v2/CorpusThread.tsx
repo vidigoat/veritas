@@ -63,7 +63,8 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
           {state.fleet.facts != null && <div className="text-[15px] text-ink">The books are reconstructed from the documents: <b>{fmt(state.fleet.vendors)} vendors</b>, <b>{fmt(state.fleet.employees)} employees</b>, <b>{fmt(state.fleet.txns)} transactions</b> — {fmt(state.fleet.facts)} facts, each cited to its source page.</div>}
 
           {/* CROSS-REFERENCE — anomalies + the reveal */}
-          {state.anomalies.length > 0 && <Label>Cross-reference</Label>}
+          {(state.anomalies.length > 0 || state.noAnomalies) && <Label>Cross-reference</Label>}
+          {state.noAnomalies && <div className="text-[15px] text-ink">Cross-reference clean: no shared identities between vendors and employees, no unexplained duplicate patterns. These books hold up.</div>}
           {state.anomalies.map(a => (
             <div key={a.id} className={`rounded-card border px-3.5 py-2.5 ${a.strength >= 0.7 ? "bg-crimson-pale border-crimson/25" : "bg-cream border-hairline"}`}>
               <div className="flex items-center gap-2 text-[13px] font-semibold">
@@ -105,13 +106,13 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
 
           {/* ACTIONS — human-in-the-loop freezes, with receipts */}
           {state.freezes.map(f => (
-            <div key={f.target} className="mt-2 rounded-card border border-crimson/25 bg-white px-4 py-3 flex items-center gap-3 scalein">
+            <div key={f.target} className="mt-2 rounded-card border border-crimson/25 bg-white px-4 py-3 flex items-center gap-3 flex-wrap scalein">
               <Lock size={16} weight="duotone" className="text-crimson shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-semibold text-ink">Freeze payments to {f.target}</div>
-                <div className="text-[12.5px] text-ink-50">{f.receiptId ? <>Executed — receipt <span className="mono">{f.receiptId}</span></> : "The agent requests approval before acting. Nothing moves without a human."}</div>
+                <div className="text-[12.5px] text-ink-50">{f.receiptId ? <>Executed — receipt <span className="mono">{f.receiptId}</span></> : f.failed ? <span className="text-crimson">Couldn&rsquo;t reach the engine — try again.</span> : state.replay ? "In the live run, a human approves this before anything moves." : "The agent requests approval before acting. Nothing moves without a human."}</div>
               </div>
-              {!f.receiptId && <button onClick={() => onApprove?.(f.target)} className="bg-crimson text-white font-medium text-[12.5px] px-3.5 py-2 rounded-control hover:opacity-90 shrink-0">Approve freeze</button>}
+              {!f.receiptId && !state.replay && <button onClick={() => onApprove?.(f.target)} className="bg-crimson text-white font-medium text-[12.5px] px-3.5 py-2 rounded-control hover:opacity-90 shrink-0">{f.failed ? "Retry freeze" : "Approve freeze"}</button>}
               {f.receiptId && <span className="text-nvidia font-semibold text-[12.5px] shrink-0">✓ Frozen</span>}
             </div>
           ))}
@@ -199,9 +200,10 @@ function RetrievalCard({ r, onOpenDoc }: { r: Retrieval; onOpenDoc: (id: string)
   );
 }
 
-/** Render [DOC-ID] citations inside an answer as clickable chips. */
+/** Render [DOC-ID] citations inside an answer as clickable chips.
+ *  Doc ids mix cases (HR-E015-record, F-1) — match any word-ish id. */
 function renderCited(text: string, onOpen: (id: string) => void) {
-  const parts = text.split(/\[([A-Z][A-Z0-9\-]{2,40})\]/g);
+  const parts = text.split(/\[([A-Za-z][A-Za-z0-9_\-]{1,40})\]/g);
   return parts.map((p, i) => i % 2 === 1 ? <DocChip key={i} id={p} onOpen={onOpen} inline /> : <span key={i}>{p}</span>);
 }
 

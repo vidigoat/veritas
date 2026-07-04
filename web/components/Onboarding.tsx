@@ -29,7 +29,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <br />Audits catch <span className="text-ink">{n2.toFixed(0)}%</span> of it.
           </h1>
           <p className="mt-5 text-[17px] text-ink-70">VERITAS reads <span className="font-display italic">every</span> document — then investigates what it finds.</p>
-          <button onClick={onDone} className="group mt-9 inline-flex items-center gap-2 bg-ink text-white font-medium text-[15px] px-7 py-3.5 rounded-control hover:bg-fire transition-colors">
+          <button onClick={e => { e.stopPropagation(); onDone(); }} className="group mt-9 inline-flex items-center gap-2 bg-ink text-white font-medium text-[15px] px-7 py-3.5 rounded-control hover:bg-fire transition-colors">
             Open a case <span className="transition-transform group-hover:translate-x-0.5">→</span>
           </button>
         </div>
