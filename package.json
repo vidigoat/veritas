@@ -2,7 +2,7 @@
   "name": "veritas",
   "private": true,
   "version": "0.1.0",
-  "description": "The AI Forensic Auditor \u2014 RAISE Summit Hackathon 2026",
+  "description": "VERITAS — the AI forensic auditor that reads 100% of the books and finds fraud in minutes",
   "scripts": {
     "dev": "pnpm --parallel --filter server --filter web dev",
     "test": "pnpm -r test",

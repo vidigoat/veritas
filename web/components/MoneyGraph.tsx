@@ -25,7 +25,6 @@ export function MoneyGraph({ hypotheses, reveal, findings }: { hypotheses: Hyp[]
       <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }} nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} zoomOnScroll={false} panOnDrag={false}>
         <Background gap={22} color="#E6E4D4" />
       </ReactFlow>
-      {!reveal && hypotheses.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-ink-30 text-sm pointer-events-none">Entities appear as VERITAS investigates</div>}
     </div>
   );
 }

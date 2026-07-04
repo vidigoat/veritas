@@ -2,6 +2,7 @@
 const isStatic = process.env.STATIC_EXPORT === "1";
 export default {
   reactStrictMode: false,
+  devIndicators: false,
   transpilePackages: ["@veritas/shared"],
   ...(isStatic
     ? { output: "export", images: { unoptimized: true } }
