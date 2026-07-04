@@ -80,7 +80,7 @@ export default function Home() {
           <VerdictBar state={state} onApprove={approve} onReport={() => setShowReport(true)} />
         </>
       )}
-      {showReport && <Report caseId={caseId.current} onClose={() => setShowReport(false)} />}
+      {showReport && <Report state={state} onClose={() => setShowReport(false)} />}
     </div>
   );
 }
