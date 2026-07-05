@@ -251,6 +251,11 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     if (parsedVerdict) {
       verdict = parsedVerdict;
       if (parsedVerdict !== "confirmed" && dispositive) { dissent = parsedVerdict; verdict = "confirmed"; }
+      // ARITHMETIC GUARD: a duplicate whose ledger nets to ZERO (a credit note
+      // reverses the second debit) cannot be filed as a loss — there is no loss.
+      // Dollar figures are code's domain; a €0 "fraud finding" is a category
+      // error. Cleared as a caught control error, examiner's concern recorded.
+      if (parsedVerdict === "confirmed" && reversedHerring) verdict = "cleared";
     } else if (reversedHerring) {
       // examiner unreachable, but the ledger nets to zero — arithmetic, not judgment
       verdict = "cleared";
@@ -266,7 +271,10 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
 
     if (verdict === "cleared") {
       cleared.push(a);
-      emit(mk("cleared", { stepId, anomaly: a, why: statement }, "investigate"));
+      const why = (reversedHerring && parsedVerdict === "confirmed")
+        ? "A matching credit note reverses this payment — the ledger nets to zero, so there is no loss to file. Recorded as a caught control error; the examiner's concern is noted on the audit trail."
+        : statement;
+      emit(mk("cleared", { stepId, anomaly: a, why }, "investigate"));
       return;
     }
     if (verdict !== "confirmed") { emit(mk("unproven", { stepId, anomaly: a }, "investigate")); return; }
