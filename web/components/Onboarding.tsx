@@ -21,6 +21,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           <div className="flex justify-center mb-7"><LogoMark size={76} /></div>
           <div className="font-display font-medium text-[34px] tracking-[0.12em]">VERITAS</div>
           <div className="font-display italic text-ink-50 mt-1.5 text-[17px]">The AI Forensic Auditor</div>
+          <button onClick={e => { e.stopPropagation(); setBeat(1); }} className="group mt-9 inline-flex items-center gap-2 bg-ink text-white font-medium text-[15px] px-7 py-3.5 rounded-control hover:bg-fire transition-colors">
+            Next <span className="transition-transform group-hover:translate-x-0.5">→</span>
+          </button>
         </div>
       ) : (
         <div className="text-center max-w-2xl fadeup">
@@ -30,7 +33,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           </h1>
           <p className="mt-5 text-[17px] text-ink-70">VERITAS reads <span className="font-display italic">every</span> document — then investigates what it finds.</p>
           <button onClick={e => { e.stopPropagation(); onDone(); }} className="group mt-9 inline-flex items-center gap-2 bg-ink text-white font-medium text-[15px] px-7 py-3.5 rounded-control hover:bg-fire transition-colors">
-            Open a case <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            Try it <span className="transition-transform group-hover:translate-x-0.5">→</span>
           </button>
         </div>
       )}
