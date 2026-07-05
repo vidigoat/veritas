@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ListChecks, Check, CaretDown, Books } from "@phosphor-icons/react";
 import type { CorpusState } from "@/lib/useCorpus";
@@ -8,7 +8,7 @@ import { Swarm } from "./Swarm";
 import { PhaseHeader } from "./stream/PhaseHeader";
 import { InvestigationRail } from "./stream/InvestigationRail";
 import { VerdictBanner, RecommendedActions, DoneFooter, FindingCard, ClearedCard, UnprovenCard } from "./stream/Findings";
-import { EASE, SCHEME_LABEL, fmt, Label, DocChip, renderCited } from "./stream/kit";
+import { EASE, SCHEME_LABEL, fmt, DocChip, renderCited } from "./stream/kit";
 
 const API = (typeof window !== "undefined" && (window as any).__VERITAS_API__)
   || process.env.NEXT_PUBLIC_API_BASE
@@ -40,38 +40,64 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
   const c = state.corpus;
   const f = state.fleet;
 
+  // progressive disclosure: once the run moves past a section, collapse it to a one-liner
+  const hasPlan = !!state.plan;
+  const hasRead = f.shards > 0;
+  const hasCross = state.anomalies.length > 0 || !!state.noAnomalies;
+  const hasSteps = state.steps.length > 0;
+  const ingestPast = hasPlan || hasRead || hasCross || hasSteps || done;
+  const planPast = hasRead || hasCross || hasSteps || done;
+  const readPast = hasCross || hasSteps || done;
+  const crossPast = hasSteps || done;
+
   return (
-    <div className="mx-auto w-full max-w-[740px] px-5 pt-8 pb-40">
+    <div className="mx-auto w-full max-w-[740px] px-5 pt-6 pb-40">
       <UserBubble text={engagement ?? "Audit these books — find any fraud, and cite the source documents."} />
-      <div className="mt-7 flex gap-3.5">
+      <div className="mt-5 flex gap-3.5">
         <Avatar />
-        <div className="min-w-0 flex-1 space-y-4">
+        <div className="min-w-0 flex-1 space-y-3">
           <div className="text-[15.5px] leading-relaxed text-ink">I&rsquo;ll read every document in these books, plan the examination, cross-reference the entities, and work each lead to a verdict &mdash; retrieving again whenever the evidence demands it, with an independent review on every finding. Watch.</div>
 
           {/* INGEST */}
-          {c && <Label>Ingest</Label>}
           {c && (
-            <div className="text-[15px] text-ink">
-              {c.company ? <>These books belong to <b>{c.company}</b>. </> : null}
-              <b>{fmt(c.total)} documents</b> read{Object.keys(c.stats || {}).length ? <> — {Object.entries(c.stats).map(([k, v]) => `${fmt(v as number)} ${k.replace(/_/g, " ")}`).join(" · ")}</> : null}.
-            </div>
+            <Section label="Ingest" past={ingestPast}
+              summary={<>Ingested <b className="font-semibold text-ink-70">{fmt(c.total)}</b> documents{c.company ? ` · ${c.company}` : ""}</>}>
+              <div className="text-[15px] text-ink">
+                {c.company ? <>These books belong to <b>{c.company}</b>. </> : null}
+                <b>{fmt(c.total)} documents</b> read{Object.keys(c.stats || {}).length ? <> — {Object.entries(c.stats).map(([k, v]) => `${fmt(v as number)} ${k.replace(/_/g, " ")}`).join(" · ")}</> : null}.
+              </div>
+            </Section>
           )}
 
           {/* PLAN */}
-          {state.plan && <Label>Plan</Label>}
-          {state.plan && <PlanCard plan={state.plan} />}
+          {state.plan && (
+            <Section label="Plan" past={planPast}
+              summary={<>Examination plan · {state.plan.steps.length} step{state.plan.steps.length !== 1 ? "s" : ""}</>}>
+              <PlanCard plan={state.plan} />
+            </Section>
+          )}
 
           {/* READ — the drone fleet */}
-          {f.shards > 0 && <Label>Read</Label>}
-          {f.shards > 0 && <Swarm shards={f.shards} done={f.done} drones={f.drones} facts={f.fleetFacts} corpusTotal={c?.total} />}
-          {f.facts != null && (
-            <div className="text-[15px] text-ink">The books are reconstructed from the documents: <b>{fmt(f.vendors)} vendors</b>, <b>{fmt(f.employees)} employees</b>, <b>{fmt(f.txns)} transactions</b> — {fmt(f.facts)} facts, each cited to its source page.</div>
+          {f.shards > 0 && (
+            <Section label="Read" past={readPast}
+              summary={<>Read <b className="font-semibold text-ink-70">{fmt(c?.total)}</b> documents{f.facts != null ? <> · {fmt(f.facts)} facts</> : null}</>}>
+              <Swarm shards={f.shards} done={f.done} drones={f.drones} facts={f.fleetFacts} corpusTotal={c?.total} />
+              {f.facts != null && (
+                <div className="text-[15px] text-ink mt-3">The books are reconstructed from the documents: <b>{fmt(f.vendors)} vendors</b>, <b>{fmt(f.employees)} employees</b>, <b>{fmt(f.txns)} transactions</b> — {fmt(f.facts)} facts, each cited to its source page.</div>
+              )}
+            </Section>
           )}
 
           {/* CROSS-REFERENCE — leads, framed as suspects (never verdicts) */}
-          {(state.anomalies.length > 0 || state.noAnomalies) && <Label>Cross-reference</Label>}
-          {state.noAnomalies && <div className="text-[15px] text-ink">Cross-reference clean: no shared identities between vendors and employees, no unexplained duplicate patterns. These books hold up.</div>}
-          {state.anomalies.length > 0 && <CrossRefSummary anomalies={state.anomalies} />}
+          {(state.anomalies.length > 0 || state.noAnomalies) && (
+            <Section label="Cross-reference" past={crossPast}
+              summary={state.noAnomalies
+                ? <>Cross-reference clean · no shared identities</>
+                : <>Cross-reference · {state.anomalies.length} lead{state.anomalies.length !== 1 ? "s" : ""} to work</>}>
+              {state.noAnomalies && <div className="text-[15px] text-ink">Cross-reference clean: no shared identities between vendors and employees, no unexplained duplicate patterns. These books hold up.</div>}
+              {state.anomalies.length > 0 && <CrossRefSummary anomalies={state.anomalies} />}
+            </Section>
+          )}
 
           {/* INVESTIGATE + VERIFY — the live rail, or the collapsed "show working" */}
           {state.steps.length > 0 && <Label>Investigate + Verify</Label>}
@@ -148,6 +174,39 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
   );
 }
 
+/** A collapsing section: full content (label header + body) while active,
+ *  a tidy one-line summary once the run has moved past it. Reader can toggle. */
+function Section({ label, past, summary, children }: { label: string; past: boolean; summary: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(!past);
+  const touched = useRef(false);
+  useEffect(() => { if (!touched.current) setOpen(!past); }, [past]);
+  const toggle = () => { touched.current = true; setOpen(o => !o); };
+  return (
+    <div>
+      {open ? (
+        <button onClick={toggle} disabled={!past} className="group flex items-center gap-2.5 pt-0.5 w-full">
+          <span className="mono text-[10.5px] font-semibold text-ink-30 uppercase tracking-[0.14em]">{label}</span>
+          <div className="flex-1 h-px bg-line" />
+          {past && <CaretDown size={12} className="shrink-0 rotate-180 text-ink-30 group-hover:text-ink-50 transition-colors" />}
+        </button>
+      ) : (
+        <button onClick={toggle} className="group flex items-center gap-2 pt-0.5 w-full text-left text-[13px] text-ink-50 hover:text-ink transition-colors">
+          <Check size={13} weight="bold" style={{ color: "#4a7300" }} className="shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{summary}</span>
+          <CaretDown size={12} className="shrink-0 text-ink-30 group-hover:text-ink-50" />
+        </button>
+      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div key="sec-body" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} style={{ overflow: "hidden" }}>
+            <div className="mt-2.5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── plain-English pulse under the live phase word ──
 function pulseDetail(state: CorpusState): string {
   const ph = state.phase?.title;
@@ -164,6 +223,16 @@ function pulseDetail(state: CorpusState): string {
   }
   if (ph === "Report") return "filing the examination";
   return "";
+}
+
+/** Small section-divider label (used for the live Investigate + Verify head). */
+function Label({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 pt-0.5">
+      <span className="mono text-[10.5px] font-semibold text-ink-30 uppercase tracking-[0.14em]">{children}</span>
+      <div className="flex-1 h-px bg-line" />
+    </div>
+  );
 }
 
 function CrossRefSummary({ anomalies }: { anomalies: { scheme: string }[] }) {

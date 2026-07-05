@@ -1,7 +1,8 @@
 "use client";
 /** The payoff surfaces — confirmed findings, cleared/unproven leads,
- *  the closing verdict banner, recommended actions, and the report footer. */
+ *  the closing verdict banner, recommended actions, and the report download. */
 import { motion } from "framer-motion";
+import { jsPDF } from "jspdf";
 import { ShieldCheck, ListChecks, DownloadSimple, ShieldSlash, Scales } from "@phosphor-icons/react";
 import type { CorpusState, Finding } from "@/lib/useCorpus";
 import { EASE, SCHEME_LABEL, fmt, DocChip } from "./kit";
@@ -114,40 +115,117 @@ export function DoneFooter({ state, api, caseId }: { state: CorpusState; api?: s
   );
 }
 
-/** Build the downloadable markdown report from the filed case. */
+/** Build the downloadable examination report as a clean, professional PDF (jsPDF).
+ *  A4, helvetica typography, page-break aware — the artifact an audit committee keeps.
+ *  Never names any model, vendor, or infrastructure: the report is stack-neutral. */
 export function downloadReport(state: CorpusState) {
-  const L: string[] = [];
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 48;                       // margins
+  const W = pageW - M * 2;            // content width
+  let y = M;                          // running cursor (top of next block)
+
+  const INK = [17, 17, 17], MUT = [120, 120, 114], CRIM = [192, 24, 42], GREEN = [74, 115, 0], ICE = [11, 105, 199];
+  const setC = (c: number[]) => doc.setTextColor(c[0], c[1], c[2]);
+  const ensure = (h: number) => { if (y + h > pageH - M) { doc.addPage(); y = M; } };
+  const gap = (h: number) => { y += h; };
+  const hr = (shade = 224) => { doc.setDrawColor(shade); doc.setLineWidth(0.7); doc.line(M, y, pageW - M, y); };
+
+  // wrapped text block — advances y, breaks pages, returns nothing
+  const write = (text: string, o: { size?: number; color?: number[]; bold?: boolean; italic?: boolean; mono?: boolean; lh?: number; x?: number; w?: number } = {}) => {
+    const { size = 11, color = INK, bold = false, italic = false, mono = false, lh = 1.42, x = M, w = W } = o;
+    const style = mono ? "normal" : italic ? "italic" : bold ? "bold" : "normal";
+    doc.setFont(mono ? "courier" : "helvetica", style);
+    doc.setFontSize(size); setC(color);
+    const lines = doc.splitTextToSize(text, w) as string[];
+    for (const ln of lines) { ensure(size * lh); doc.text(ln, x, y + size * 0.86); y += size * lh; }
+  };
+
   const company = state.corpus?.company ?? "the audited company";
   const total = state.findings.reduce((s, f) => s + (f.amount || 0), 0);
-  L.push(`# VERITAS — Forensic Examination Report`, ``);
-  L.push(`**Subject:** ${company}  `);
-  L.push(`**Corpus:** ${fmt(state.corpus?.total)} documents  `);
-  L.push(`**Verdict:** ${state.findings.length} confirmed finding(s), €${fmt(Math.round(total))} at risk · ${state.cleared.length} lead(s) cleared · ${state.unproven.length} escalated  `);
-  L.push(`**Method:** plan → read every document → cross-reference identities → per-lead investigation with document retrieval (twice per lead, the second query written by the agent) → independent review panel · every figure recomputed from the ledger`, ``);
+  const clearedN = state.cleared.length;
+
+  // ── 1. Header ──
+  doc.setFont("helvetica", "bold"); doc.setFontSize(22); setC(INK);
+  doc.text("VERITAS", M, y + 20);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11); setC(MUT);
+  doc.text("Forensic Examination", M, y + 35);
+  y += 50;
+  write(`Subject: ${company}`, { size: 13, bold: true });
+  gap(9); hr(); gap(17);
+
+  // ── 2. Summary band ──
+  write(`€${fmt(Math.round(total))} at risk · ${state.findings.length} finding${state.findings.length !== 1 ? "s" : ""} · ${clearedN} cleared`, { size: 14, bold: true, color: total > 0 ? CRIM : INK });
+  gap(4);
+  write(`Examined ${fmt(state.corpus?.total)} documents · every figure recomputed from the ledger, every claim cited to a source document.`, { size: 10, color: MUT });
+  gap(20);
+
+  // ── 3. Findings — one section each ──
   for (const f of state.findings) {
-    L.push(`## ${f.id} — ${SCHEME_LABEL[f.scheme] ?? f.scheme} · €${fmt(Math.round(f.amount))} at risk`, ``);
-    L.push(f.statement, ``);
-    L.push(`Confidence: ${Math.round((f.confidence ?? 0) * 100)}% · Independent review: ${f.nemotron?.upheld === false ? "objection recorded (filed on dispositive document evidence)" : "upheld"}`, ``);
-    L.push(`**Evidence**`);
-    for (const e of (f.evidence ?? [])) L.push(`- ${e.claim} _[${(e.doc_ids ?? e.docIds ?? []).join(", ")}]_`);
-    if (f.recommendedActions?.length) { L.push(``, `**Recommended actions**`); for (const a of f.recommendedActions) L.push(`- ${a}`); }
-    L.push(``);
+    ensure(66);
+    const scheme = SCHEME_LABEL[f.scheme] ?? f.scheme;
+    const title = scheme.charAt(0).toUpperCase() + scheme.slice(1);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); setC(INK);
+    doc.text(title, M, y + 11);
+    doc.setFontSize(13); setC(CRIM);
+    doc.text(`€${fmt(Math.round(f.amount))}`, pageW - M, y + 11, { align: "right" });
+    y += 20;
+    write(`${Math.round((f.confidence ?? 0) * 100)}% confidence · ${f.id}`, { size: 9, mono: true, color: MUT });
+    gap(6);
+    write(f.statement, { size: 11, color: INK });
+    gap(10);
+    write("Evidence", { size: 9.5, bold: true, color: MUT });
+    gap(3);
+    for (const e of (f.evidence ?? [])) {
+      write(`— ${e.claim}`, { size: 10, color: INK, x: M + 10, w: W - 10 });
+      const ids = (e.doc_ids ?? e.docIds ?? []).join(", ");
+      if (ids) write(ids, { size: 8.5, mono: true, color: ICE, x: M + 22, w: W - 22 });
+      gap(3);
+    }
+    gap(12); hr(238); gap(16);
   }
+
+  // ── 4. Cleared leads ──
   if (state.cleared.length) {
-    L.push(`## Cleared leads — investigated and exonerated`, ``);
-    for (const c of state.cleared) L.push(`- **${c.anomaly?.title ?? "lead"}** — ${c.why ?? "innocent explanation holds"}`);
-    L.push(``);
+    ensure(40);
+    write("Cleared", { size: 12, bold: true, color: GREEN });
+    gap(7);
+    for (const c of state.cleared) {
+      write(`${c.anomaly?.title ?? "Lead"} — ${c.why ?? "innocent explanation holds; no fraud."}`, { size: 10, color: INK });
+      gap(5);
+    }
+    gap(12);
   }
+
+  // ── Escalated (unproven) leads ──
   if (state.unproven.length) {
-    L.push(`## Escalated for manual review`, ``);
-    for (const u of state.unproven) L.push(`- ${u.anomaly?.title ?? "lead"} — evidence cuts both ways; no accusation filed`);
-    L.push(``);
+    ensure(40);
+    write("Escalated for manual review", { size: 12, bold: true, color: MUT });
+    gap(7);
+    for (const u of state.unproven) {
+      write(`${u.anomaly?.title ?? "Lead"} — evidence cuts both ways; no accusation filed.`, { size: 10, color: INK });
+      gap(5);
+    }
+    gap(12);
   }
-  L.push(`---`, `_Every dollar figure recomputed from the ledger; every claim cited to a source document. Generated by VERITAS._`);
-  const blob = new Blob([L.join("\n")], { type: "text/markdown" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `VERITAS-examination-${(company || "report").replace(/[^\w]+/g, "-")}.md`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+
+  // ── 5. Recommended actions ──
+  const acts = Array.from(new Set(state.findings.flatMap(f => f.recommendedActions ?? [])));
+  if (acts.length) {
+    ensure(40);
+    write("Recommended actions", { size: 12, bold: true, color: INK });
+    gap(7);
+    for (const a of acts) { write(`•  ${a}`, { size: 10, color: INK, x: M + 4, w: W - 4 }); gap(4); }
+    gap(12);
+  }
+
+  // ── 6. Footer on the last page ──
+  const fy = pageH - 30;
+  doc.setDrawColor(228); doc.setLineWidth(0.6); doc.line(M, fy - 12, pageW - M, fy - 12);
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8.5); setC(MUT);
+  doc.text("Every figure recomputed from the ledger; every claim cited to a source document. Generated by VERITAS.", M, fy);
+
+  const slug = (company || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  doc.save(slug ? `VERITAS-examination-${slug}.pdf` : "VERITAS-examination.pdf");
 }

@@ -2,17 +2,15 @@
 /**
  * InvestigationRail — the vertical "watch it think" timeline.
  *
- *  ┌ [lead icon]  Lead — a possible <scheme>: <subject>
- *  │   • search the documents · ranked N pages   "query"   [DOC][DOC]
- *  │   • [brain]  thinking out loud …  (streams token-by-token, caret)
- *  │   • search again — its own follow-up query   [DOC]
- *  │   • [scales] Verdict — confirmed/cleared/unproven  (word-stagger reveal)
- *  │   • independent review · 3 lens votes · UPHELD/REFUTED
- *  └ resolution card (the confirmed finding / cleared / unproven payoff)
+ * While a lead is ACTIVE it stays fully expanded (streamed thinking, both
+ * searches, the review panel). The moment it RESOLVES it collapses to ONE
+ * compact row — a status glyph + scheme · subject + € amount + a chevron —
+ * so the currently-active work is what fills the screen. Click the row (or
+ * chevron) to re-expand any worked lead.
  */
-import type { ReactNode } from "react";
-import { motion } from "framer-motion";
-import { MagnifyingGlass, Brain, Scales, Check } from "@phosphor-icons/react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MagnifyingGlass, Brain, Scales, Check, CaretDown } from "@phosphor-icons/react";
 import type { Step, Finding, Retrieval, StepPanel } from "@/lib/useCorpus";
 import { EASE, SCHEME_LABEL, fmt, DocChip, BrandBadge, VultrFavicon, NvidiaFavicon } from "./kit";
 import { RevealText } from "./PhaseHeader";
@@ -24,9 +22,11 @@ function cleanHyp(h?: string): string {
   return h.replace(/\n\s*(FOLLOW[-\s]?UP|VERDICT|CONFIDENCE)\s*:[\s\S]*$/i, "").trim();
 }
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export function InvestigationRail({ steps, findings, running, onOpenDoc, showResolutions = true }: { steps: Step[]; findings: Finding[]; running: boolean; onOpenDoc: (id: string) => void; showResolutions?: boolean }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {steps.map(st => <StepBlock key={st.stepId} st={st} findings={findings} running={running} onOpenDoc={onOpenDoc} showResolutions={showResolutions} />)}
     </div>
   );
@@ -36,41 +36,83 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions }: { st: 
   const scheme = SCHEME_LABEL[st.scheme ?? "other"] ?? "anomaly";
   const resolved = !!st.resolution;
   const active = running && !resolved;
+  const kind = st.resolution?.kind;
   const first = st.retrievals.find(r => !r.followup) ?? st.retrievals[0];
   const followups = st.retrievals.filter(r => r !== first);
   const hyp = cleanHyp(st.hypothesis);
-  const finding = st.resolution?.kind === "confirmed" ? findings.find(f => f.id === st.resolution?.findingId) : null;
+  const finding = kind === "confirmed" ? findings.find(f => f.id === st.resolution?.findingId) : null;
+
+  // resolved leads collapse by default; the reader can expand any of them
+  const [open, setOpen] = useState(!resolved);
+  const touched = useRef(false);
+  useEffect(() => { if (!touched.current) setOpen(!resolved); }, [resolved]);
+  const toggle = () => { touched.current = true; setOpen(o => !o); };
+  const collapsed = resolved && !open;
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: EASE }} className="relative">
-      {/* lead head */}
-      <div className="flex items-start gap-3">
-        <StepHead active={active} resolution={st.resolution} />
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="mono text-[10.5px] font-semibold uppercase tracking-[0.13em] text-ink-30">
-            Lead{resolved ? " · worked" : active ? " · investigating" : ""}
+      {/* head — a one-line compact row once resolved, the full lead head while working */}
+      {collapsed ? (
+        <CompactRow scheme={scheme} title={st.title} amount={finding?.amount} kind={kind!} onClick={toggle} />
+      ) : (
+        <div className="flex items-start gap-3">
+          <StepHead active={active} resolution={st.resolution} />
+          <div className="min-w-0 flex-1 pt-0.5">
+            <div className="mono text-[10.5px] font-semibold uppercase tracking-[0.13em] text-ink-30">
+              Lead{resolved ? " · worked" : active ? " · investigating" : ""}
+            </div>
+            <div className="text-[15px] font-medium text-ink leading-snug">
+              A possible {scheme}{st.title ? <span className="text-ink-70"> — {st.title}</span> : null}
+            </div>
           </div>
-          <div className="text-[15px] font-medium text-ink leading-snug">
-            A possible {scheme}{st.title ? <span className="text-ink-70"> — {st.title}</span> : null}
-          </div>
+          {resolved && (
+            <button onClick={toggle} className="shrink-0 mt-0.5 text-ink-30 hover:text-ink transition-colors" title="collapse this lead">
+              <CaretDown size={14} className="rotate-180" />
+            </button>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* sub-rail — the timeline of moves */}
-      <div className="relative mt-3 ml-[14px] pl-7 space-y-3.5 border-l" style={{ borderColor: "#E8E8E5" }}>
-        {first && <SubStep icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={first} onOpenDoc={onOpenDoc} /></SubStep>}
-        {(hyp || st.hypStreaming) && <SubStep icon={<IconBadge><Brain size={13} weight="duotone" /></IconBadge>}><Thinking text={hyp} streaming={!!st.hypStreaming} /></SubStep>}
-        {followups.map((r, i) => <SubStep key={i} icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={r} onOpenDoc={onOpenDoc} /></SubStep>)}
-        {st.verdictStatement && <SubStep icon={<IconBadge tone={st.verdict}><Scales size={13} weight="duotone" /></IconBadge>}><Verdict statement={st.verdictStatement} verdict={st.verdict} /></SubStep>}
-        {st.panel && <SubStep icon={<BrandBadge><NvidiaFavicon size={13} /></BrandBadge>}><Panel panel={st.panel} /></SubStep>}
-        {st.errorText && <SubStep icon={<IconBadge><Scales size={13} weight="duotone" /></IconBadge>}><div className="text-[13.5px] text-ink-50">{st.errorText}</div></SubStep>}
-      </div>
+      {/* body — the timeline of moves + the payoff; height-animated collapse/expand */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div key="body" initial={resolved ? { height: 0, opacity: 0 } : false} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.38, ease: EASE }} style={{ overflow: "hidden" }}>
+            <div className="relative mt-2.5 ml-[14px] pl-7 space-y-2.5 border-l" style={{ borderColor: "#E8E8E5" }}>
+              {first && <SubStep icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={first} onOpenDoc={onOpenDoc} /></SubStep>}
+              {(hyp || st.hypStreaming) && <SubStep icon={<IconBadge><Brain size={13} weight="duotone" /></IconBadge>}><Thinking text={hyp} streaming={!!st.hypStreaming} /></SubStep>}
+              {followups.map((r, i) => <SubStep key={i} icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={r} onOpenDoc={onOpenDoc} /></SubStep>)}
+              {st.verdictStatement && <SubStep icon={<IconBadge tone={st.verdict}><Scales size={13} weight="duotone" /></IconBadge>}><Verdict statement={st.verdictStatement} verdict={st.verdict} /></SubStep>}
+              {st.panel && <SubStep icon={<BrandBadge><NvidiaFavicon size={13} /></BrandBadge>}><Panel panel={st.panel} /></SubStep>}
+              {st.errorText && <SubStep icon={<IconBadge><Scales size={13} weight="duotone" /></IconBadge>}><div className="text-[13.5px] text-ink-50">{st.errorText}</div></SubStep>}
+            </div>
 
-      {/* the payoff of this lead */}
-      {showResolutions && finding && <div className="mt-3.5"><FindingCard f={finding} onOpenDoc={onOpenDoc} /></div>}
-      {showResolutions && st.resolution?.kind === "cleared" && <div className="mt-3.5"><ClearedCard title={st.title} why={st.resolution.why} /></div>}
-      {showResolutions && st.resolution?.kind === "unproven" && <div className="mt-3.5"><UnprovenCard title={st.title} /></div>}
+            {/* the payoff of this lead */}
+            {showResolutions && finding && <div className="mt-3"><FindingCard f={finding} onOpenDoc={onOpenDoc} /></div>}
+            {showResolutions && kind === "cleared" && <div className="mt-3"><ClearedCard title={st.title} why={st.resolution?.why} /></div>}
+            {showResolutions && kind === "unproven" && <div className="mt-3"><UnprovenCard title={st.title} /></div>}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+/** The collapsed one-liner a resolved lead shrinks to. Crimson if confirmed, calm otherwise. */
+function CompactRow({ scheme, title, amount, kind, onClick }: { scheme: string; title?: string; amount?: number; kind: "confirmed" | "cleared" | "unproven"; onClick: () => void }) {
+  const color = kind === "confirmed" ? "#C0182A" : kind === "cleared" ? "#4a7300" : "#8A8A82";
+  return (
+    <button onClick={onClick} className="group w-full flex items-center gap-2.5 text-left py-1 -my-0.5">
+      <span className="inline-flex items-center justify-center rounded-full shrink-0" style={{ width: 16, height: 16, background: color }}>
+        <Check size={9} weight="bold" color="#fff" />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">
+        <span className="font-medium">{cap(scheme)}</span>{title ? <span className="text-ink-70"> — {title}</span> : null}
+      </span>
+      {amount != null
+        ? <span className="mono text-[13px] font-semibold shrink-0" style={{ color }}>€{fmt(Math.round(amount))}</span>
+        : <span className="text-[12px] font-medium shrink-0" style={{ color }}>{kind === "cleared" ? "cleared" : "escalated"}</span>}
+      <CaretDown size={13} className="shrink-0 text-ink-30 group-hover:text-ink-50 transition-colors" />
+    </button>
   );
 }
 
