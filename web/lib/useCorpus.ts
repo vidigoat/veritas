@@ -14,11 +14,23 @@ const API = (typeof window !== "undefined" && (window as any).__VERITAS_API__)
 
 export interface Drone { i: number; docs: number; found: number }
 export interface Anomaly { id: string; scheme: string; title: string; subjectIds: string[]; amount?: number; proofDocs: string[]; detail: string; strength: number }
-export interface PanelVote { lens: string; upheld: boolean; confidence: number; reasoning: string }
+export interface PanelVote { lens: string; upheld?: boolean; confidence?: number; reasoning?: string; abstained?: boolean }
 export interface Finding { id: string; scheme: string; statement: string; amount: number; evidence: any[]; confidence: number; nemotron?: any; recommendedActions?: string[] }
 export interface Retrieval { model: string; candidates: number; query?: string; followup?: boolean; surfaced: { docId: string; score: number }[] }
-export type StepItem = { kind: "text"; text: string } | { kind: "retrieval"; r: Retrieval };
-export interface Step { stepId: string; scheme?: string; items: StepItem[]; verdict?: string; panel?: { reviewing?: boolean; done?: boolean; upheld?: boolean; votes?: PanelVote[]; summary?: string; finding?: string } }
+export interface StepPanel { reviewing?: boolean; done?: boolean; upheld?: boolean; votes?: PanelVote[]; summary?: string; finding?: string; lenses?: string[]; model?: string }
+export interface Step {
+  stepId: string;
+  scheme?: string;
+  title?: string;
+  retrievals: Retrieval[];
+  hypothesis?: string;       // accumulated streamed "thinking out loud" prose
+  hypStreaming?: boolean;    // tokens still arriving
+  verdict?: string;          // confirmed | cleared | unproven
+  verdictStatement?: string; // the delivered finding paragraph
+  errorText?: string;        // fail-safe unproven message
+  panel?: StepPanel;
+  resolution?: { kind: "confirmed" | "cleared" | "unproven"; why?: string; findingId?: string };
+}
 
 export interface QATurn { role: "user" | "veritas"; text: string; streaming?: boolean; retrieval?: { model: string; candidates: number; surfaced: { docId: string; score: number }[] } }
 
@@ -41,6 +53,8 @@ export interface CorpusState {
   unproven: { anomaly?: Anomaly }[];
   verdict?: { findings: number; total: number; confidence: number; cleared: number };
   usage?: { usd: number };
+  elapsedS?: number;
+  _lastVerdictStep?: string;   // last step to emit a reasoning_verdict — cleared/unproven follow synchronously
   freezes: { target: string; receiptId?: string; failed?: boolean }[];
   seen?: Set<string>;
 }
@@ -55,15 +69,17 @@ function reduce(s: CorpusState, ev: any): CorpusState {
     if (seen.has(ev.id)) return s;
     s = { ...s, seen: new Set(seen).add(ev.id) };
   }
-  const upStep = (id: string, fn: (st: Step) => void): CorpusState => {
-    const steps = [...s.steps];
+  const stampStep = (st0: CorpusState, id: string | undefined, fn: (st: Step) => void): CorpusState => {
+    if (!id) return st0;
+    const steps = [...st0.steps];
     const i = steps.findIndex(x => x.stepId === id);
     // clone deep enough that fn can never mutate the previous state object
-    const st: Step = i < 0 ? { stepId: id, items: [] } : { ...steps[i], items: [...steps[i].items] };
+    const st: Step = i < 0 ? { stepId: id, retrievals: [] } : { ...steps[i], retrievals: [...steps[i].retrievals] };
     fn(st);
     if (i < 0) steps.push(st); else steps[i] = st;
-    return { ...s, steps };
+    return { ...st0, steps };
   };
+  const upStep = (id: string, fn: (st: Step) => void): CorpusState => stampStep(s, id, fn);
   switch (ev.type) {
     case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total, company: p.company ?? s.corpus?.company }, status: "running" };
     case "phase": return { ...s, phase: p };
@@ -75,18 +91,31 @@ function reduce(s: CorpusState, ev: any): CorpusState {
     case "anomaly": return { ...s, anomalies: [...s.anomalies, p.anomaly] };
     case "no_anomalies": return { ...s, noAnomalies: true };
     case "reveal": return { ...s, reveals: [...s.reveals, p] };
-    case "reasoning": return upStep(p.stepId, st => { st.scheme = p.scheme ?? st.scheme; if (p.text) st.items.push({ kind: "text", text: p.text }); if (p.verdict) st.verdict = p.verdict; });
-    case "retrieval": return upStep(p.stepId, st => { st.items.push({ kind: "retrieval", r: { model: p.model, candidates: p.candidates, query: p.query, followup: p.followup, surfaced: p.surfaced } }); });
-    case "nemotron_panel": return upStep(p.stepId, st => { st.panel = { ...st.panel, reviewing: !p.done, done: p.done, upheld: p.upheld, votes: p.votes ?? st.panel?.votes, summary: p.summary ?? st.panel?.summary, finding: p.finding }; });
-    case "cleared": return { ...s, cleared: [...s.cleared, { anomaly: p.anomaly, why: p.why }] };
-    case "unproven": return { ...s, unproven: [...s.unproven, { anomaly: p.anomaly }] };
-    case "finding": return { ...s, findings: [...s.findings, p.finding] };
+    case "reasoning": return upStep(p.stepId, st => {
+      st.scheme = p.scheme ?? st.scheme;
+      if (typeof p.text === "string") {
+        const m = p.text.match(/^Investigating:\s*([\s\S]+)$/);
+        if (m) st.title = m[1].trim(); else st.errorText = p.text;
+      }
+      if (p.verdict) st.verdict = p.verdict;
+    });
+    // STREAMING: accumulate the model's live "thinking out loud" per step
+    case "reasoning_delta": return upStep(p.stepId, st => { st.hypothesis = (st.hypothesis ?? "") + (p.delta ?? ""); st.hypStreaming = true; });
+    case "reasoning_end": return upStep(p.stepId, st => { st.hypStreaming = false; });
+    case "retrieval": return upStep(p.stepId, st => { st.retrievals = [...st.retrievals, { model: p.model, candidates: p.candidates, query: p.query, followup: p.followup, surfaced: p.surfaced ?? [] }]; });
+    case "reasoning_verdict": return { ...upStep(p.stepId, st => { st.verdict = p.verdict; st.verdictStatement = p.statement; }), _lastVerdictStep: p.stepId };
+    case "nemotron_panel": return upStep(p.stepId, st => { st.panel = { ...st.panel, reviewing: p.reviewing ?? (p.done ? false : st.panel?.reviewing), done: p.done ?? st.panel?.done, upheld: p.upheld ?? st.panel?.upheld, votes: p.votes ?? st.panel?.votes, summary: p.summary ?? st.panel?.summary, finding: p.finding ?? st.panel?.finding, lenses: p.lenses ?? st.panel?.lenses, model: p.model ?? st.panel?.model }; });
+    // cleared/unproven are emitted synchronously right after their reasoning_verdict → stamp the same step
+    case "cleared": return stampStep({ ...s, cleared: [...s.cleared, { anomaly: p.anomaly, why: p.why }] }, s._lastVerdictStep, st => { st.resolution = { kind: "cleared", why: p.why }; });
+    case "unproven": return stampStep({ ...s, unproven: [...s.unproven, { anomaly: p.anomaly }] }, s._lastVerdictStep, st => { st.resolution = { kind: "unproven" }; });
+    // a finding links to its step via the panel's finding id
+    case "finding": { const s2 = { ...s, findings: [...s.findings, p.finding] }; const step = s2.steps.find(x => x.panel?.finding === p.finding?.id); return step ? stampStep(s2, step.stepId, st => { st.resolution = { kind: "confirmed", findingId: p.finding.id }; }) : s2; }
     case "freeze_request": return s.freezes.some(f => f.target === p.target) ? s : { ...s, freezes: [...s.freezes, { target: p.target }] };
     case "action_executed": return { ...s, freezes: s.freezes.map(f => f.target === p.target ? { ...f, receiptId: p.receiptId ?? "approved", failed: false } : f) };
     case "action_failed": return { ...s, freezes: s.freezes.map(f => f.target === p.target ? { ...f, failed: true } : f) };
     case "verdict": return { ...s, verdict: p };
     case "usage": return { ...s, usage: { usd: p.usd ?? p.usdTotal } };
-    case "done": return { ...s, status: "done", verdict: s.verdict ?? { findings: p.findings, total: p.total, confidence: 0, cleared: s.cleared.length }, usage: { usd: p.usd } };
+    case "done": return { ...s, status: "done", verdict: s.verdict ?? { findings: p.findings, total: p.total, confidence: 0, cleared: s.cleared.length }, usage: { usd: p.usd }, elapsedS: p.elapsedS };
     case "error": return { ...s, status: "error", error: p.message };
     // ── interrogation turns ──
     case "ask_user": return { ...s, qa: [...s.qa, { role: "user", text: p.text }, { role: "veritas", text: "", streaming: true }] };
