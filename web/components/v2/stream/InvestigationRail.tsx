@@ -12,7 +12,7 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlass, Brain, Scales, Check, CaretDown } from "@phosphor-icons/react";
 import type { Step, Finding, Retrieval, StepPanel } from "@/lib/useCorpus";
-import { EASE, SCHEME_LABEL, fmt, DocChip, BrandBadge, VultrFavicon, NvidiaFavicon } from "./kit";
+import { EASE, SCHEME_LABEL, fmt, DocChip, BrandBadge, VultrFavicon, NvidiaFavicon, useStack } from "./kit";
 import { RevealText } from "./PhaseHeader";
 import { FindingCard, ClearedCard, UnprovenCard } from "./Findings";
 
@@ -162,10 +162,12 @@ function StepHead({ active, resolution }: { active: boolean; resolution?: Step["
 }
 
 function RetrievalBody({ r, onOpenDoc }: { r: Retrieval; onOpenDoc: (id: string) => void }) {
+  const stack = useStack();
+  const label = stack && r.model ? r.model : r.followup ? "Precision retrieval" : "Retrieval";
   return (
     <div>
       <div className="flex items-baseline gap-1.5 flex-wrap">
-        <span className="text-[13px] font-semibold text-ink">{r.model}</span>
+        <span className="text-[13px] font-semibold text-ink">{label}</span>
         <span className="text-[12.5px] text-ink-50">{r.followup ? "· retrieving again — its own follow-up query" : `· ranked ${fmt(r.candidates)} candidate page${r.candidates === 1 ? "" : "s"}`}</span>
       </div>
       {r.query && <div className="text-[12.5px] text-ink-50 mt-0.5 italic">&ldquo;{r.query}&rdquo;</div>}
@@ -210,15 +212,17 @@ function Verdict({ statement, verdict, streaming }: { statement: string; verdict
   );
 }
 
-/** The independent review — a PANEL of NVIDIA Nemotron examiners, one vote per
- *  lens. Binding: a refuted accusation is never filed. */
+/** The independent review — a PANEL of independent examiners (NVIDIA Nemotron
+ *  under the hood), one vote per lens. Binding: a refuted accusation is never
+ *  filed. Stack-neutral by default; the header toggle names the model. */
 function Panel({ panel }: { panel: StepPanel }) {
+  const stack = useStack();
   const rows = panel.votes ?? (panel.lenses ?? ["correctness", "innocent explanation", "sufficiency"]).map(l => ({ lens: l } as any));
   const reviewing = !panel.done;
   return (
     <div className="rounded-card border bg-nvidia-pale overflow-hidden" style={{ borderColor: "#D9EBBF", maxWidth: 560 }}>
       <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "#E4F0CE" }}>
-        <span className="text-[12.5px] font-semibold" style={{ color: "#4a7300" }}>Independent review — {panel.model ?? "NVIDIA Nemotron"} panel</span>
+        <span className="text-[12.5px] font-semibold" style={{ color: "#4a7300" }}>Independent review — {stack ? `${panel.model ?? "NVIDIA Nemotron"} panel` : "3 examiners"}</span>
         {panel.done
           ? <span className="mono text-[11px] ml-auto font-bold" style={{ color: panel.upheld ? "#4a7300" : "#C0182A" }}>{panel.upheld ? "UPHELD" : "REFUTED — NOT FILED"}</span>
           : <span className="mono text-[11px] ml-auto text-ink-50">3 examiners reviewing…</span>}
@@ -235,6 +239,9 @@ function Panel({ panel }: { panel: StepPanel }) {
             </div>
           );
         })}
+        {panel.done && panel.summary?.startsWith("Arbitration") && (
+          <div className="text-[12px] text-ink-70 pt-1 border-t" style={{ borderColor: "#E4F0CE" }}>{panel.summary}</div>
+        )}
       </div>
     </div>
   );

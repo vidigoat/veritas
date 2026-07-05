@@ -6,6 +6,7 @@ import { Composer } from "@/components/Composer";
 import { CorpusThread } from "@/components/v2/CorpusThread";
 import { DocViewer } from "@/components/v2/DocViewer";
 import { LogoMark } from "@/components/Logo";
+import { StackProvider } from "@/components/v2/stream/kit";
 
 export default function Home() {
   const { state, upload, runLive, resume, ask, openDoc, approve } = useCorpus();
@@ -17,6 +18,17 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // stack-neutral by default; "?stack=1" or the header toggle reveals model names
+  const [stack, setStack] = useState(false);
+  useEffect(() => {
+    try {
+      const url = new URLSearchParams(location.search).get("stack");
+      if (url != null) { const on = url !== "0"; setStack(on); localStorage.setItem("veritas-stack", on ? "1" : "0"); }
+      else setStack(localStorage.getItem("veritas-stack") === "1");
+    } catch {}
+  }, []);
+  const toggleStack = () => setStack(s => { try { localStorage.setItem("veritas-stack", s ? "0" : "1"); } catch {} return !s; });
 
   // refresh-proof: reattach to an in-flight examination instead of losing it
   useEffect(() => {
@@ -54,6 +66,7 @@ export default function Home() {
   if (onboard) return <Onboarding onDone={() => setOnboard(false)} />;
 
   return (
+    <StackProvider value={stack}>
     <div className="h-dvh flex flex-col bg-white">
       <div className="flex items-center gap-3 px-6 h-14 border-b border-line shrink-0">
         <LogoMark size={26} /><span className="font-display font-medium tracking-[0.06em] text-[16px]">VERITAS</span>
@@ -61,6 +74,10 @@ export default function Home() {
           <span className="mono text-[11px] text-ink-50 ml-3">{state.phase.index}/{state.phase.of} · {state.phase.title}</span>
         )}
         <div className="ml-auto flex items-center gap-2.5">
+          <button onClick={toggleStack} title={stack ? "hide the model stack" : "show the model stack"}
+            className={`mono text-[11px] border px-2.5 h-7 flex items-center rounded-control transition-colors ${stack ? "text-white bg-ink border-ink" : "text-ink-50 bg-cream border-line hover:text-ink"}`}>
+            stack
+          </button>
           <div className="mono text-[11px] text-ink-50 bg-cream border border-line px-2.5 h-7 flex items-center rounded-control">{state.usage ? `$${state.usage.usd.toFixed(3)}` : "Vultr"}</div>
         </div>
       </div>
@@ -97,5 +114,6 @@ export default function Home() {
       )}
       {openId && <DocViewer docId={openId} onClose={() => setOpenId(null)} fetchDoc={openDoc} />}
     </div>
+    </StackProvider>
   );
 }

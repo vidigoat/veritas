@@ -122,6 +122,13 @@ majority of answered votes decides. A reviewer that errors **abstains**, and an 
 never upholds. If the panel refuses, the accusation is **not filed** — it is escalated as
 *unproven*, with the panel's objection on the record.
 
+Disagreement is handled the same way — across families. If the examiner's verdict
+contradicts dispositive document evidence (an exact identity match; the same invoice
+debited twice with no reversal anywhere in the books), the lead goes to the panel for
+**arbitration**, with the examiner's dissent recorded on the finding. And a panel refusal
+on dispositive evidence must survive a **second, fresh panel** before it stands — a single
+flaky reviewer response can neither file nor erase a documented finding.
+
 The reported confidence is honest arithmetic: the **minimum** of the examiner's stated
 confidence and the weakest upholding Nemotron vote.
 
@@ -150,6 +157,10 @@ INDEPENDENT VERIFIER →  NVIDIA Nemotron-Cascade-2                        (/v1/
    across the corpus in parallel as an independent read.
 BACKEND + CONSOLE    →  one Vultr Cloud Compute VM serves both            (see DEPLOY.md)
 ```
+
+The console ships **stack-neutral** — a real enterprise agent doesn't brand its steps. The
+`stack` toggle in the header (or `?stack=1`) reveals the live model names; the screenshots
+in this README have it on.
 
 ## Why it can't cry wolf
 

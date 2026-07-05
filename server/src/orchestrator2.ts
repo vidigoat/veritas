@@ -63,6 +63,12 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   const out = (e: CaseEvent) => { events.push(e); return e; };
   const spend = () => +getSpend().usd.toFixed(4);
 
+  // one channel; every concurrent producer (plan + fleet + investigators)
+  // streams into it — the drain loop at the bottom yields them in order
+  const chan: CaseEvent[] = [];
+  let wake: (() => void) | null = null;
+  const emit = (e: CaseEvent) => { out(e); chan.push(e); const w = wake; wake = null; w?.(); };
+
   // ── INGEST ──
   phase = "ingest";
   yield out(mk("phase", { phase, index: 1, of: 6, title: "Ingest" }));
@@ -72,23 +78,26 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   yield out(mk("corpus_loaded", { stats: corpus.stats, total: corpus.total, company, currency }));
 
   // ── PLAN — the examiner reads the shape of the books and states its plan ──
-  //  Genuine and adaptive: the plan is generated per-corpus from the real doc mix.
+  //  Genuine and adaptive: the plan is generated per-corpus from the real doc
+  //  mix — and NON-BLOCKING: nothing downstream depends on its text, so the
+  //  pipeline proceeds while the plan streams in (the card pops in when ready).
   phase = "plan";
   yield out(mk("phase", { phase, index: 2, of: 6, title: "Plan" }));
   const statLine = Object.entries(corpus.stats).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}s`).join(", ");
-  const planRes = await subagent<any>(
-    `You are VERITAS, a senior forensic accountant opening an examination. Given the composition of the books, produce a focused examination plan. Respond with ONE JSON object:\n{"plan":[{"step":"imperative, 4-10 words","why":"one short clause"}]}\n3 to 5 steps, ACFE method: reconstruct the entity graph, cross-reference identities (addresses, bank accounts, tax IDs), statistical sweeps for duplicates and structuring, then work each anomaly to a verdict — exonerate first.`,
-    `The books of ${company}${brief ? ` — engagement brief: ${brief}` : ""}: ${corpus.total} documents (${statLine}). What is your examination plan?`,
-    { tier: "senior", maxTokens: 500, expectKeys: ["plan"], timeoutMs: 25000, noThink: true },
-  );
-  const planRaw = Array.isArray(planRes.data?.plan) ? planRes.data.plan.filter((s: any) => s && typeof s.step === "string").slice(0, 5) : [];
-  const plan = planRaw.length ? planRaw : [
+  const FALLBACK_PLAN = [
     { step: "Reconstruct the entity graph from the documents", why: "every verdict needs the cast of characters" },
     { step: "Cross-reference vendor and employee identities", why: "shells hide in shared addresses and accounts" },
     { step: "Sweep payments for duplicates and structuring", why: "the statistical tells of a billing scheme" },
     { step: "Investigate each anomaly — exonerate first", why: "accuse only what survives the innocent explanation" },
   ];
-  yield out(mk("plan", { steps: plan }));
+  const planTask = subagent<any>(
+    `You are VERITAS, a senior forensic accountant opening an examination. Given the composition of the books, produce a focused examination plan. Respond with ONE JSON object:\n{"plan":[{"step":"imperative, 4-10 words","why":"one short clause"}]}\n3 to 5 steps, ACFE method: reconstruct the entity graph, cross-reference identities (addresses, bank accounts, tax IDs), statistical sweeps for duplicates and structuring, then work each anomaly to a verdict — exonerate first.`,
+    `The books of ${company}${brief ? ` — engagement brief: ${brief}` : ""}: ${corpus.total} documents (${statLine}). What is your examination plan?`,
+    { tier: "senior", maxTokens: 500, expectKeys: ["plan"], timeoutMs: 25000, noThink: true },
+  ).then(planRes => {
+    const planRaw = Array.isArray(planRes.data?.plan) ? planRes.data.plan.filter((s: any) => s && typeof s.step === "string").slice(0, 5) : [];
+    emit(mk("plan", { steps: planRaw.length ? planRaw : FALLBACK_PLAN }, "plan"));
+  }).catch(() => { emit(mk("plan", { steps: FALLBACK_PLAN }, "plan")); });
 
   // ── READ + CROSS-REFERENCE + INVESTIGATE (overlapped) ──
   //  The parser (parserStore) reads EVERY document instantly and is authoritative
@@ -106,11 +115,6 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   const cleared: Anomaly[] = [];
   let fid = 0;
 
-  // one channel; every concurrent producer (fleet + investigators) streams into it
-  const chan: CaseEvent[] = [];
-  let wake: (() => void) | null = null;
-  const emit = (e: CaseEvent) => { out(e); chan.push(e); const w = wake; wake = null; w?.(); };
-
   // stream a reasoning pass token-by-token (genuine Vultr streaming). The prose is
   // surfaced live; the machine-readable tail (FOLLOWUP:/VERDICT:/CONFIDENCE:) is
   // withheld from the stream and parsed by the caller. Best-effort — if streaming
@@ -124,7 +128,7 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     // a burst of concurrent calls can get rate-limited mid-run — retry a stream
     // that produced NOTHING once (a partial stream is never restarted mid-screen)
     for (let attempt = 0; attempt < 2 && !full; attempt++) {
-      if (attempt) await new Promise(res => setTimeout(res, 1500));
+      if (attempt) await new Promise(res => setTimeout(res, 900));
       try {
         for await (const d of streamChat("senior", [{ role: "system", content: system }, { role: "user", content: user }], { maxTokens, noThink: true, timeoutMs: 22000 })) {
           full += d;
@@ -227,14 +231,23 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     const parsedConf = clamp01(parseFloat(weigh.match(/CONFIDENCE:\s*(0?\.\d+|1(?:\.0+)?)/i)?.[1] ?? ""), 0.8);
     const verdictStatement = (weigh.split(/\n?\s*(?:VERDICT|CONFIDENCE)\s*:/i)[0] || "").replace(/\s+/g, " ").trim();
 
-    // deterministic facts that gate ONLY the fail-safes (never override the examiner):
+    // deterministic facts that gate ONLY the fail-safes and the arbitration
+    // routing below — they never decide a verdict by themselves:
     const dispositive = a.strength >= IRONCLAD || (a.scheme === "duplicate_payment" && (a.amount ?? 0) > 0);
     const reversedHerring = a.scheme === "duplicate_payment" && (a.amount ?? 0) === 0;
 
     let verdict: "confirmed" | "cleared" | "unproven";
-    let examinerAnswered = !!parsedVerdict;
+    const examinerAnswered = !!parsedVerdict;
+    // ARBITRATION: when the examiner's verdict CONTRADICTS dispositive document
+    // evidence (an exact identity match; an un-reversed duplicate), the second
+    // model family decides — the lead goes to the Nemotron panel with the
+    // examiner's dissent recorded. If the panel also declines, the examiner's
+    // reading stands. A single model flake can neither file nor erase a
+    // documented finding.
+    let dissent: "cleared" | "unproven" | null = null;
     if (parsedVerdict) {
       verdict = parsedVerdict;
+      if (parsedVerdict !== "confirmed" && dispositive) { dissent = parsedVerdict; verdict = "confirmed"; }
     } else if (reversedHerring) {
       // examiner unreachable, but the ledger nets to zero — arithmetic, not judgment
       verdict = "cleared";
@@ -245,8 +258,8 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     } else {
       verdict = "unproven";
     }
-    const statement = verdictStatement || hypothesis || a.detail;
-    emit(mk("reasoning_verdict", { stepId, verdict, statement, confidence: examinerAnswered ? parsedConf : undefined, examinerAnswered }, "investigate"));
+    const statement = dissent ? a.detail : (verdictStatement || hypothesis || a.detail);
+    emit(mk("reasoning_verdict", { stepId, verdict: dissent ?? verdict, statement: verdictStatement || hypothesis || a.detail, confidence: examinerAnswered ? parsedConf : undefined, examinerAnswered }, "investigate"));
 
     if (verdict === "cleared") {
       cleared.push(a);
@@ -264,27 +277,44 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     ];
     const candidate = {
       id: `F-${++fid}`, scheme: a.scheme, statement, amount: a.amount ?? 0,
-      evidence, confidence: examinerAnswered ? parsedConf : +Math.min(a.strength, 0.85).toFixed(2),
+      // on dissent the examiner's stated confidence belongs to the OTHER verdict —
+      // the filing's prior comes from the documents, capped below the clean path
+      evidence, confidence: examinerAnswered && !dissent ? parsedConf : +Math.min(a.strength, 0.85).toFixed(2),
     };
     emit(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, model: "NVIDIA Nemotron Cascade-2", lenses: ["correctness", "innocent explanation", "sufficiency"] }, "investigate"));
-    const panel = await nemotronPanel(candidate as any);
+    let panel = await nemotronPanel(candidate as any);
+    if (!panel.upheld && dispositive) {
+      // SECOND LOOK: a single flaky reviewer response (one refute + one
+      // abstention) must not erase dispositive document evidence — a refusal
+      // on an exact-identity or un-reversed-duplicate lead must survive a
+      // second, fresh panel before it stands.
+      panel = await nemotronPanel(candidate as any);
+    }
     emit(mk("nemotron_panel", {
       finding: candidate.id, stepId, done: true, upheld: panel.upheld, votes: panel.votes, model: "NVIDIA Nemotron Cascade-2",
       summary: panel.upheld
-        ? `Upheld by the independent Nemotron review — ${panel.reasoning}`
-        : `REFUTED by the independent Nemotron review — the accusation is NOT filed. ${panel.reasoning}`,
+        ? (dissent
+          ? `Arbitration — the examiner read this lead as ${dissent}, but the documents show ${a.scheme === "duplicate_payment" ? "the same invoice debited twice with no reversal" : "an exact identity match"}; the independent panel upholds the finding, with the examiner's dissent recorded.`
+          : `Upheld by the independent review — ${panel.reasoning}`)
+        : `REFUTED by the independent review — the accusation is NOT filed. ${panel.reasoning}`,
     }, "investigate"));
 
     if (!panel.upheld) {
       // two model families must agree before VERITAS accuses anyone
-      emit(mk("unproven", { stepId, anomaly: a, why: `The examiner confirmed, but the independent Nemotron panel refused to uphold — ${panel.reasoning}. Escalated for manual review instead of filed.` }, "investigate"));
+      if (dissent === "cleared") {
+        // examiner cleared it and the panel declined the accusation — cleared stands
+        cleared.push(a);
+        emit(mk("cleared", { stepId, anomaly: a, why: verdictStatement || a.detail }, "investigate"));
+      } else {
+        emit(mk("unproven", { stepId, anomaly: a, why: `The accusation did not survive the independent review — ${panel.reasoning}. Escalated for manual review instead of filed.` }, "investigate"));
+      }
       return;
     }
     const upConf = panel.votes.filter(v => !v.abstained && v.upheld).map(v => v.confidence);
     const confidence = +Math.min(candidate.confidence, upConf.length ? Math.min(...upConf) : candidate.confidence, 0.97).toFixed(2);
     const finding: Finding = {
       ...candidate, confidence, verdict: "confirmed",
-      nemotron: { upheld: true, reasoning: panel.reasoning, model: panel.model } as any,
+      nemotron: { upheld: true, reasoning: panel.reasoning, model: panel.model, ...(dissent ? { dissent } : {}) } as any,
       recommendedActions: recActions(a), evidence: candidate.evidence,
     } as any;
     findings.push(finding);
@@ -296,7 +326,7 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   // `wake` forever (or die as an unhandled rejection) mid-demo.
   let settled = false;
   const onSettle = () => { settled = true; const w = wake; wake = null; w?.(); };
-  Promise.all([fleetTask, fanOut(top, a => investigateOne(a), { concurrency: 3 })]).then(onSettle, onSettle);
+  Promise.all([fleetTask, planTask, fanOut(top, a => investigateOne(a), { concurrency: 4 })]).then(onSettle, onSettle);
   while (true) {
     if (chan.length) { yield chan.shift()!; continue; }
     if (settled) break;

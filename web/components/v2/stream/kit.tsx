@@ -1,7 +1,14 @@
 "use client";
 /** Shared streaming-UI primitives for the VERITAS run thread. */
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { MagnifyingGlass, ShieldCheck } from "@phosphor-icons/react";
+
+/** Stack visibility — the console is stack-neutral by default (a real
+ *  enterprise agent doesn't brand its steps); the header "stack" toggle
+ *  reveals the actual model names for judges and the curious. */
+const StackCtx = createContext(false);
+export const StackProvider = StackCtx.Provider;
+export const useStack = () => useContext(StackCtx);
 
 export const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 

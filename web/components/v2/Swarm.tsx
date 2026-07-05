@@ -1,8 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
-import { NvidiaFavicon } from "./stream/kit";
+import { NvidiaFavicon, useStack } from "./stream/kit";
 /** The reading fleet — one tile per reader, lighting up as each finishes its shard. */
 export function Swarm({ shards, done, drones, facts }: { shards: number; done: number; drones: { i: number; found: number }[]; facts?: number; corpusTotal?: number }) {
+  const stack = useStack();
   const doneSet = new Map(drones.map(d => [d.i, d.found]));
   const tiles = Array.from({ length: Math.max(shards, 1) }, (_, i) => i);
   const cols = Math.min(Math.max(shards, 1), 24);
@@ -12,7 +13,7 @@ export function Swarm({ shards, done, drones, facts }: { shards: number; done: n
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="inline-flex items-center justify-center rounded-[5px] bg-white border border-hairline shrink-0" style={{ width: 18, height: 18, padding: 2 }}><NvidiaFavicon size={13} /></span>
         {running && <span className="w-2 h-2 rounded-full pulse shrink-0" style={{ background: "#76B900" }} />}
-        <span className="text-[13px] font-semibold text-ink">Nemotron drone fleet</span>
+        <span className="text-[13px] font-semibold text-ink">{stack ? "Nemotron drone fleet" : "The reading fleet"}</span>
         <span className="text-[12.5px] text-ink-50">— {shards} drones reading document shards in parallel</span>
         <span className="mono text-[12px] text-ink-50 ml-auto">{done}/{shards}{facts ? ` · ${facts} facts` : ""}</span>
       </div>

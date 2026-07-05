@@ -8,13 +8,14 @@ import { Swarm } from "./Swarm";
 import { PhaseHeader } from "./stream/PhaseHeader";
 import { InvestigationRail } from "./stream/InvestigationRail";
 import { VerdictBanner, RecommendedActions, DoneFooter, FindingCard, ClearedCard, UnprovenCard } from "./stream/Findings";
-import { EASE, SCHEME_LABEL, fmt, DocChip, renderCited } from "./stream/kit";
+import { EASE, SCHEME_LABEL, fmt, DocChip, renderCited, useStack } from "./stream/kit";
 
 const API = (typeof window !== "undefined" && (window as any).__VERITAS_API__)
   || process.env.NEXT_PUBLIC_API_BASE
   || (typeof window !== "undefined" && window.location.port === "3000" ? "http://localhost:8787" : "");
 
 export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }: { state: CorpusState; engagement?: string; onOpenDoc: (id: string) => void; onAsk?: (q: string) => void; onApprove?: (target: string) => void }) {
+  const stack = useStack();
   const endRef = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
   const [showWorking, setShowWorking] = useState(false);
@@ -150,7 +151,7 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
               <div className="flex items-start gap-2.5 border rounded-card px-3.5 py-2.5 max-w-[600px] bg-ice-pale" style={{ borderColor: "#BBD9F3" }}>
                 <div className="w-7 h-7 rounded-control flex items-center justify-center shrink-0 mt-px" style={{ background: "#0B69C7" }}><Books size={14} weight="duotone" color="#fff" /></div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px] font-semibold" style={{ color: "#0B4E93" }}>{t.retrieval.model} · re-read the books for this question ({fmt(t.retrieval.candidates)} candidate pages)</div>
+                  <div className="text-[12.5px] font-semibold" style={{ color: "#0B4E93" }}>{stack && t.retrieval.model ? `${t.retrieval.model} · re-read` : "Re-read"} the books for this question ({fmt(t.retrieval.candidates)} candidate pages)</div>
                   <div className="flex gap-1.5 mt-1.5 flex-wrap">{t.retrieval.surfaced.map(d => <DocChip key={d.docId} id={d.docId} score={d.score} onOpen={onOpenDoc} />)}</div>
                 </div>
               </div>

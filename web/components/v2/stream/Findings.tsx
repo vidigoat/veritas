@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 import { jsPDF } from "jspdf";
 import { ShieldCheck, ListChecks, DownloadSimple, ShieldSlash, Scales } from "@phosphor-icons/react";
 import type { CorpusState, Finding } from "@/lib/useCorpus";
-import { EASE, SCHEME_LABEL, fmt, DocChip } from "./kit";
+import { EASE, SCHEME_LABEL, fmt, DocChip, useStack } from "./kit";
 import { RevealText } from "./PhaseHeader";
 
 /** THE confirmed finding — the reveal at the end of a lead's investigation. */
 export function FindingCard({ f, onOpenDoc, reveal = true, cur = "\u20AC" }: { f: Finding; onOpenDoc: (id: string) => void; reveal?: boolean; cur?: string }) {
+  const stack = useStack();
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.98, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
       className="rounded-card border border-crimson/25 bg-white shadow-card overflow-hidden">
@@ -19,7 +20,7 @@ export function FindingCard({ f, onOpenDoc, reveal = true, cur = "\u20AC" }: { f
       <div className="p-4">
         <div className="flex items-baseline gap-3 flex-wrap">
           <div className="mono text-[26px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(f.amount))}</div>
-          <div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence{f.nemotron?.upheld ? " · upheld by the independent Nemotron review" : ""}</div>
+          <div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence{f.nemotron?.upheld ? ` · upheld by the independent ${stack ? "Nemotron " : ""}review` : ""}</div>
         </div>
         {reveal
           ? <RevealText text={f.statement} className="text-[14.5px] leading-relaxed text-ink mt-3" />
@@ -65,6 +66,7 @@ export function UnprovenCard({ title, why }: { title?: string; why?: string }) {
 
 /** The closing verdict banner — total at risk, findings, cleared, panel tally. */
 export function VerdictBanner({ state }: { state: CorpusState }) {
+  const stack = useStack();
   const cur = state.corpus?.currency ?? "\u20AC";
   const total = state.findings.reduce((s, f) => s + (f.amount || 0), 0);
   const upheld = state.findings.filter(f => f.nemotron?.upheld !== false).length;
@@ -76,7 +78,7 @@ export function VerdictBanner({ state }: { state: CorpusState }) {
         <div className="flex items-baseline gap-4 flex-wrap">
           <div className="mono text-[30px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(total))}</div>
           <div className="text-[13px] text-ink-50">
-            at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared{state.unproven.length ? ` · ${state.unproven.length} escalated` : ""} · {upheld}/{state.findings.length} upheld by the independent Nemotron review
+            at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared{state.unproven.length ? ` · ${state.unproven.length} escalated` : ""} · {upheld}/{state.findings.length} upheld by the independent {stack ? "Nemotron " : ""}review
           </div>
         </div>
       </div>
