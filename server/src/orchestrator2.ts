@@ -130,7 +130,7 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     for (let attempt = 0; attempt < 2 && !full; attempt++) {
       if (attempt) await new Promise(res => setTimeout(res, 900));
       try {
-        for await (const d of streamChat("senior", [{ role: "system", content: system }, { role: "user", content: user }], { maxTokens, noThink: true, timeoutMs: 22000 })) {
+        for await (const d of streamChat("senior", [{ role: "system", content: system }, { role: "user", content: user }], { maxTokens, noThink: true, timeoutMs: 16000 })) {
           full += d;
           if (sealed) continue;
           const m = full.match(TAIL);
@@ -145,8 +145,11 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   };
 
   // launch the Nemotron drone fleet (non-blocking); its events belong to "map"
+  // fleet concurrency 3: the drones share the inference rate limit with the
+  // examiner streams on the critical path — a calmer fleet means fewer stalled
+  // verdict streams, which is worth far more wall-clock than fleet speed
   const fleetTask = augmentWithFleet(corpus, store, {
-    concurrency: 6,
+    concurrency: 3,
     onFleet: n => emit(mk("fleet_start", { shards: n }, "map")),
     onDrone: (i, dc, found) => emit(mk("drone_done", { i, docs: dc, found }, "map")),
   }).then(r => {
@@ -457,7 +460,7 @@ const clamp01 = (n: number, dflt: number) => Number.isFinite(n) ? +Math.max(0.5,
 
 /** One bounded, non-streaming senior call — the verdict retry path. */
 async function chatOnce(system: string, user: string): Promise<string | null> {
-  const res = await chat("senior", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 300, noThink: true, timeoutMs: 20_000 });
+  const res = await chat("senior", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 300, noThink: true, timeoutMs: 15_000 });
   const raw = (res.message.content ?? (res.message as any).reasoning ?? "").toString().trim();
   return raw || null;
 }

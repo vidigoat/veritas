@@ -29,7 +29,7 @@ export async function nemotronPanel(finding: { statement: string; scheme?: strin
   const user = `FINDING UNDER REVIEW\nClass: ${finding.scheme ?? "fraud"}\nStatement: ${finding.statement}\nConfidence asserted: ${finding.confidence ?? "—"}\nEvidence:\n${evidenceText}\n\n${RUBRIC}`;
   const votes = await Promise.all(LENSES.map(async ({ lens, system }): Promise<PanelVote> => {
     try {
-      const res = await chat("judge", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 400, noThink: true, timeoutMs: 25_000 });
+      const res = await chat("judge", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 400, noThink: true, timeoutMs: 18_000 });
       const raw = (res.message.content ?? (res.message as any).reasoning ?? "").toString();
       const j = extractJson<any>(raw) ?? parseLoose(raw);
       if (j.abstained) return { lens, upheld: false, abstained: true, confidence: 0, reasoning: "unparseable review — ABSTAINED" };
