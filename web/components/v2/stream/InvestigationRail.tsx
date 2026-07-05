@@ -24,15 +24,15 @@ function cleanHyp(h?: string): string {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function InvestigationRail({ steps, findings, running, onOpenDoc, showResolutions = true }: { steps: Step[]; findings: Finding[]; running: boolean; onOpenDoc: (id: string) => void; showResolutions?: boolean }) {
+export function InvestigationRail({ steps, findings, running, onOpenDoc, showResolutions = true, currency = "\u20AC" }: { steps: Step[]; findings: Finding[]; running: boolean; onOpenDoc: (id: string) => void; showResolutions?: boolean; currency?: string }) {
   return (
     <div className="space-y-3">
-      {steps.map(st => <StepBlock key={st.stepId} st={st} findings={findings} running={running} onOpenDoc={onOpenDoc} showResolutions={showResolutions} />)}
+      {steps.map(st => <StepBlock key={st.stepId} st={st} findings={findings} running={running} onOpenDoc={onOpenDoc} showResolutions={showResolutions} currency={currency} />)}
     </div>
   );
 }
 
-function StepBlock({ st, findings, running, onOpenDoc, showResolutions }: { st: Step; findings: Finding[]; running: boolean; onOpenDoc: (id: string) => void; showResolutions: boolean }) {
+function StepBlock({ st, findings, running, onOpenDoc, showResolutions, currency = "\u20AC" }: { st: Step; findings: Finding[]; running: boolean; onOpenDoc: (id: string) => void; showResolutions: boolean; currency?: string }) {
   const scheme = SCHEME_LABEL[st.scheme ?? "other"] ?? "anomaly";
   const resolved = !!st.resolution;
   const active = running && !resolved;
@@ -53,7 +53,7 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions }: { st: 
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: EASE }} className="relative">
       {/* head — a one-line compact row once resolved, the full lead head while working */}
       {collapsed ? (
-        <CompactRow scheme={scheme} title={st.title} amount={finding?.amount} kind={kind!} onClick={toggle} />
+        <CompactRow scheme={scheme} title={st.title} amount={finding?.amount} kind={kind!} onClick={toggle} currency={currency} />
       ) : (
         <div className="flex items-start gap-3">
           <StepHead active={active} resolution={st.resolution} />
@@ -87,7 +87,7 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions }: { st: 
             </div>
 
             {/* the payoff of this lead */}
-            {showResolutions && finding && <div className="mt-3"><FindingCard f={finding} onOpenDoc={onOpenDoc} /></div>}
+            {showResolutions && finding && <div className="mt-3"><FindingCard f={finding} onOpenDoc={onOpenDoc} cur={currency} /></div>}
             {showResolutions && kind === "cleared" && <div className="mt-3"><ClearedCard title={st.title} why={st.resolution?.why} /></div>}
             {showResolutions && kind === "unproven" && <div className="mt-3"><UnprovenCard title={st.title} /></div>}
           </motion.div>
@@ -98,7 +98,7 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions }: { st: 
 }
 
 /** The collapsed one-liner a resolved lead shrinks to. Crimson if confirmed, calm otherwise. */
-function CompactRow({ scheme, title, amount, kind, onClick }: { scheme: string; title?: string; amount?: number; kind: "confirmed" | "cleared" | "unproven"; onClick: () => void }) {
+function CompactRow({ scheme, title, amount, kind, onClick, currency = "\u20AC" }: { scheme: string; title?: string; amount?: number; kind: "confirmed" | "cleared" | "unproven"; onClick: () => void; currency?: string }) {
   const color = kind === "confirmed" ? "#C0182A" : kind === "cleared" ? "#4a7300" : "#8A8A82";
   return (
     <button onClick={onClick} className="group w-full flex items-center gap-2.5 text-left py-1 -my-0.5">
@@ -109,7 +109,7 @@ function CompactRow({ scheme, title, amount, kind, onClick }: { scheme: string; 
         <span className="font-medium">{cap(scheme)}</span>{title ? <span className="text-ink-70"> — {title}</span> : null}
       </span>
       {amount != null
-        ? <span className="mono text-[13px] font-semibold shrink-0" style={{ color }}>€{fmt(Math.round(amount))}</span>
+        ? <span className="mono text-[13px] font-semibold shrink-0" style={{ color }}>{currency}{fmt(Math.round(amount))}</span>
         : <span className="text-[12px] font-medium shrink-0" style={{ color }}>{kind === "cleared" ? "cleared" : "escalated"}</span>}
       <CaretDown size={13} className="shrink-0 text-ink-30 group-hover:text-ink-50 transition-colors" />
     </button>

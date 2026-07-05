@@ -102,7 +102,7 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
           {/* INVESTIGATE + VERIFY — the live rail, or the collapsed "show working" */}
           {state.steps.length > 0 && <Label>Investigate + Verify</Label>}
           {state.steps.length > 0 && (running || showWorking ? (
-            <InvestigationRail steps={state.steps} findings={state.findings} running={running} onOpenDoc={onOpenDoc} showResolutions={running} />
+            <InvestigationRail steps={state.steps} findings={state.findings} running={running} onOpenDoc={onOpenDoc} showResolutions={running} currency={state.corpus?.currency ?? "\u20AC"} />
           ) : (
             <CollapsedWorking leads={state.steps.length} elapsedS={state.elapsedS} onExpand={() => setShowWorking(true)} />
           ))}
@@ -115,7 +115,7 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
             <AnimatePresence>
               <motion.div key="settle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="space-y-4">
                 {state.findings.length > 0 && <Label>Findings</Label>}
-                {state.findings.map(fn => <FindingCard key={fn.id} f={fn} onOpenDoc={onOpenDoc} reveal={false} />)}
+                {state.findings.map(fn => <FindingCard key={fn.id} f={fn} onOpenDoc={onOpenDoc} reveal={false} cur={state.corpus?.currency ?? "\u20AC"} />)}
                 {state.cleared.map((cl, i) => <ClearedCard key={i} title={cl.anomaly?.title} why={cl.why} />)}
                 {state.unproven.map((u, i) => <UnprovenCard key={i} title={u.anomaly?.title} />)}
                 {state.findings.length > 0 ? <VerdictBanner state={state} /> : (

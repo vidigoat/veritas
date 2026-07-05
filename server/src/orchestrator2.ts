@@ -73,7 +73,8 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   yield out(mk("phase", { phase, index: 1, of: 6, title: "Ingest" }));
   const corpus: Corpus = ingestDir(dir);
   const company = detectCompany(corpus);
-  yield out(mk("corpus_loaded", { stats: corpus.stats, total: corpus.total, company }));
+  const currency = detectCurrency(corpus);
+  yield out(mk("corpus_loaded", { stats: corpus.stats, total: corpus.total, company, currency }));
 
   // ── PLAN — the examiner reads the shape of the books and states its plan ──
   //  Genuine and adaptive: the plan is generated per-corpus from the real doc mix.
@@ -251,6 +252,20 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   const result: RunResult = { findings, cleared, brain: brain.snapshot(), corpus: { stats: corpus.stats, total: corpus.total }, usd: spend(), elapsedS: Math.round((Date.now() - t0) / 1000), events };
   yield out(mk("done", { findings: findings.length, total, usd: result.usd, elapsedS: result.elapsedS }));
   return result;
+}
+
+/** Auto-recognise the currency from the books (so the UI shows the right symbol). */
+function detectCurrency(corpus: Corpus): string {
+  let e = 0, d = 0, r = 0;
+  for (const id of corpus.order.slice(0, 80)) {
+    const t = corpus.docs.get(id)!.text;
+    e += (t.match(/\u20AC/g) || []).length;   // euro
+    d += (t.match(/\$/g) || []).length;        // dollar
+    r += (t.match(/\bRs\b|\u20B9/g) || []).length; // rupee
+  }
+  if (d >= e && d >= r && d > 0) return "$";
+  if (r >= e && r >= d && r > 0) return "\u20B9";
+  return "\u20AC";
 }
 
 /** Auto-recognise the audited company from its own books (it heads its payroll

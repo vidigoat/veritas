@@ -9,7 +9,7 @@ import { EASE, SCHEME_LABEL, fmt, DocChip } from "./kit";
 import { RevealText } from "./PhaseHeader";
 
 /** THE confirmed finding — the reveal at the end of a lead's investigation. */
-export function FindingCard({ f, onOpenDoc, reveal = true }: { f: Finding; onOpenDoc: (id: string) => void; reveal?: boolean }) {
+export function FindingCard({ f, onOpenDoc, reveal = true, cur = "\u20AC" }: { f: Finding; onOpenDoc: (id: string) => void; reveal?: boolean; cur?: string }) {
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.98, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
       className="rounded-card border border-crimson/25 bg-white shadow-card overflow-hidden">
@@ -19,7 +19,7 @@ export function FindingCard({ f, onOpenDoc, reveal = true }: { f: Finding; onOpe
       </div>
       <div className="p-4">
         <div className="flex items-baseline gap-3 flex-wrap">
-          <div className="mono text-[26px] font-semibold text-crimson leading-none">€{fmt(Math.round(f.amount))}</div>
+          <div className="mono text-[26px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(f.amount))}</div>
           <div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence{f.nemotron?.upheld ? " · upheld by the panel" : ""}</div>
         </div>
         {reveal
@@ -66,6 +66,7 @@ export function UnprovenCard({ title }: { title?: string }) {
 
 /** The closing verdict banner — total at risk, findings, cleared, panel tally. */
 export function VerdictBanner({ state }: { state: CorpusState }) {
+  const cur = state.corpus?.currency ?? "\u20AC";
   const total = state.findings.reduce((s, f) => s + (f.amount || 0), 0);
   const upheld = state.findings.filter(f => f.nemotron?.upheld !== false).length;
   return (
@@ -74,7 +75,7 @@ export function VerdictBanner({ state }: { state: CorpusState }) {
       <div className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-crimson border-b border-crimson/15 bg-crimson-pale">Verdict</div>
       <div className="p-4">
         <div className="flex items-baseline gap-4 flex-wrap">
-          <div className="mono text-[30px] font-semibold text-crimson leading-none">€{fmt(Math.round(total))}</div>
+          <div className="mono text-[30px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(total))}</div>
           <div className="text-[13px] text-ink-50">
             at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared{state.unproven.length ? ` · ${state.unproven.length} escalated` : ""} · {upheld}/{state.findings.length} upheld by independent review
           </div>
@@ -119,6 +120,7 @@ export function DoneFooter({ state, api, caseId }: { state: CorpusState; api?: s
  *  A4, helvetica typography, page-break aware — the artifact an audit committee keeps.
  *  Never names any model, vendor, or infrastructure: the report is stack-neutral. */
 export function downloadReport(state: CorpusState) {
+  const cur = state.corpus?.currency ?? "\u20AC";
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -156,7 +158,7 @@ export function downloadReport(state: CorpusState) {
   gap(9); hr(); gap(17);
 
   // ── 2. Summary band ──
-  write(`€${fmt(Math.round(total))} at risk · ${state.findings.length} finding${state.findings.length !== 1 ? "s" : ""} · ${clearedN} cleared`, { size: 14, bold: true, color: total > 0 ? CRIM : INK });
+  write(`${cur}${fmt(Math.round(total))} at risk · ${state.findings.length} finding${state.findings.length !== 1 ? "s" : ""} · ${clearedN} cleared`, { size: 14, bold: true, color: total > 0 ? CRIM : INK });
   gap(4);
   write(`Examined ${fmt(state.corpus?.total)} documents · every figure recomputed from the ledger, every claim cited to a source document.`, { size: 10, color: MUT });
   gap(20);
@@ -169,7 +171,7 @@ export function downloadReport(state: CorpusState) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(13); setC(INK);
     doc.text(title, M, y + 11);
     doc.setFontSize(13); setC(CRIM);
-    doc.text(`€${fmt(Math.round(f.amount))}`, pageW - M, y + 11, { align: "right" });
+    doc.text(`${cur}${fmt(Math.round(f.amount))}`, pageW - M, y + 11, { align: "right" });
     y += 20;
     write(`${Math.round((f.confidence ?? 0) * 100)}% confidence · ${f.id}`, { size: 9, mono: true, color: MUT });
     gap(6);

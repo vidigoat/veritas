@@ -38,7 +38,7 @@ export interface CorpusState {
   status: "idle" | "uploading" | "running" | "done" | "error";
   qa: QATurn[];
   replay?: boolean;
-  corpus?: { stats: Record<string, number>; total: number; company?: string };
+  corpus?: { stats: Record<string, number>; total: number; company?: string; currency?: string };
   caseId?: string; error?: string;
   phase?: { phase: string; index: number; of: number; title: string };
   plan?: { steps: { step: string; why?: string }[]; model?: string };
@@ -81,7 +81,7 @@ function reduce(s: CorpusState, ev: any): CorpusState {
   };
   const upStep = (id: string, fn: (st: Step) => void): CorpusState => stampStep(s, id, fn);
   switch (ev.type) {
-    case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total, company: p.company ?? s.corpus?.company }, status: "running" };
+    case "corpus_loaded": return { ...s, corpus: { stats: p.stats, total: p.total, company: p.company ?? s.corpus?.company, currency: p.currency ?? s.corpus?.currency }, status: "running" };
     case "phase": return { ...s, phase: p };
     case "plan": return { ...s, plan: { steps: p.steps ?? [], model: p.model } };
     case "fleet_start": return { ...s, fleet: { ...s.fleet, shards: p.shards, done: 0, drones: [] } };
