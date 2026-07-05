@@ -159,6 +159,26 @@ confidence and the weakest upholding Nemotron vote.
 (every chip opens the real document), and the second-round retrieval pages that were weighed in the verdict.</sub>
 </div>
 
+## The two design bets
+
+**Absence as evidence — what VultronRetriever made possible.** Ordinary RAG treats an empty
+retrieval as a failure. VERITAS treats it as **testimony**: because the examiner's own
+follow-up query sweeps the *complete* books through VultronRetriever, "no purchase order
+exists anywhere for this vendor" is not a gap — it is a fact the verdict can rest on, and it
+is exactly how real fraud examiners think (a missing PO *is* the red flag). The two-tier
+split matters too: Core-4.5B does the wide first pass cheaply, and the single decisive
+question each lead produces goes to Prime-8B — precision spent exactly where the verdict
+hangs on it.
+
+**A verifier from a different bloodline — what NVIDIA Nemotron is here for.** The reviewer
+is deliberately **not a bigger version of the examiner** — it is a different model family
+with no fallback to the examiner's model, so correlated blind spots cannot rubber-stamp
+each other. Nemotron holds real power in this system: a three-lens panel that can **veto
+any filing**, arbitration when the examiner contradicts the documents, and a **drone fleet**
+of parallel Nemotron readers that independently samples the corpus as a cross-check on the
+deterministic parser. One model family investigates; a second, unrelated one decides what
+the world is allowed to see. That separation of powers is the product.
+
 ## Built entirely on Vultr
 
 Every model call runs on Vultr Serverless Inference — there is no other provider.
