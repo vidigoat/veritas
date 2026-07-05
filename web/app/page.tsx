@@ -101,7 +101,14 @@ export default function Home() {
               {notice && <p className="text-[12.5px] text-crimson mt-2.5 px-1">{notice}</p>}
               <p className="text-[12.5px] text-ink-40 mt-2.5 px-1">Attach the folder of files &mdash; invoices, bank statements, payroll, HR records (text, CSV, or markdown). It reads them for real and cites every finding.</p>
             </div>
-            <div className="mono text-[11px] text-ink-30 mt-8">Nemotron drone-fleet reads &middot; VultronRetriever retrieves &middot; Nemotron panel judges &mdash; all on Vultr</div>
+            {/* no books handy? one click runs the bundled 1,090-document company, live */}
+            <button onClick={() => { setStarted(true); runLive(); }}
+              className="group mt-6 inline-flex items-center gap-2 text-[13.5px] font-medium text-ink border border-line rounded-control px-4 py-2.5 hover:border-ink transition-colors">
+              No books handy? <span className="font-semibold">Audit the sample company</span>
+              <span className="text-ink-50 font-normal">&mdash; 1,090 documents, live</span>
+              <span className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+            </button>
+            <div className="mono text-[11px] text-ink-30 mt-6">Nemotron drone-fleet reads &middot; VultronRetriever retrieves &middot; Nemotron panel judges &mdash; all on Vultr</div>
           </div>
         </div>
       ) : (

@@ -17,9 +17,9 @@ when a second model family — an independent NVIDIA Nemotron panel — agrees.*
 
 **▶ Demo video:** **https://www.youtube.com/watch?v=xnTSWUwE0qA** (75 seconds)
 
-**Live demo:** **https://veritas.144-202-6-174.sslip.io** — attach a folder of a company's books,
-ask *"audit my company, please,"* and watch a genuine examination of 1,090 documents run on Vultr,
-live. Nothing is scripted — upload your own books and it reads those; on clean books it files nothing.
+**Live demo:** **https://veritas.144-202-6-174.sslip.io** — click **"Audit the sample company"**
+and watch a genuine examination of 1,090 documents run on Vultr, live. Or attach your own
+folder of books — it reads those instead.
 
 [The one-minute story](#the-one-minute-story) · [Why it's an agent](#why-its-an-agent-not-a-pipeline) ·
 [Two families must agree](#no-accusation-on-one-model-familys-say-so) · [Built on Vultr](#built-entirely-on-vultr) ·
@@ -40,8 +40,9 @@ document — 1,090 documents examined in 67 seconds for $0.012 of inference.</su
 ## For the judges — fastest path & track checklist
 
 **60-second route:** [watch the video](https://www.youtube.com/watch?v=xnTSWUwE0qA) → open the
-[live demo](https://veritas.144-202-6-174.sslip.io) and upload any folder of books (or run it
-locally — four commands, below) → read [the filing rule](#no-accusation-on-one-model-familys-say-so).
+[live demo](https://veritas.144-202-6-174.sslip.io) and click **"Audit the sample company"** —
+a real 1,090-document examination runs in front of you (~60–100s) → read
+[the filing rule](#no-accusation-on-one-model-familys-say-so).
 
 | Track requirement | Where VERITAS meets it |
 |---|---|
@@ -68,9 +69,10 @@ company. The proof is *in* the books — spread across documents no one reads si
 
 ## The one-minute story
 
-Attach a folder of a company's books and ask *"audit my company, please."* On the demo
-books (1,090 documents: 911 invoices, bank statements, payroll registers, HR records, vendor
-registrations, board minutes, credit notes — messy, realistic, euro-denominated):
+Click **"Audit the sample company"** — or attach your own folder of books and ask
+*"audit my company, please."* On the sample books (1,090 documents: 911 invoices, bank
+statements, payroll registers, HR records, vendor registrations, board minutes, credit
+notes — messy, realistic, euro-denominated):
 
 1. **It reads the whole corpus** and works out *whose* books these are (Northwind Trading Co SAS).
 2. **It plans the examination** — a real Qwen-generated plan from the actual document mix.
