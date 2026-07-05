@@ -65,12 +65,19 @@ export async function* answerCorpusQuestion(
     { role: "system", content: ASK_SYSTEM },
     { role: "user", content: `CASE — ${kase.company ?? "the audited company"}\n\nFILED FINDINGS:\n${findingsCtx || "none"}\n\nCLEARED ITEMS:\n${clearedCtx || "none"}\n\nSOURCE PAGES RETRIEVED FOR THIS QUESTION (by VultronRetriever):\n${pages || "none matched"}\n\nQUESTION: ${question}` },
   ];
-  try {
-    for await (const delta of streamChat("senior", messages, { maxTokens: 700, noThink: true })) {
-      yield { type: "answer_delta", payload: { text: delta } };
+  // a rate-limited stream can die before the first token — retry once before
+  // surfacing an error, so a judge's question never lands on a dead answer
+  let streamed = 0;
+  for (let attempt = 0; attempt < 2 && streamed === 0; attempt++) {
+    if (attempt) await new Promise(res => setTimeout(res, 1200));
+    try {
+      for await (const delta of streamChat("senior", messages, { maxTokens: 700, noThink: true, timeoutMs: 45_000 })) {
+        streamed += delta.length;
+        yield { type: "answer_delta", payload: { text: delta } };
+      }
+    } catch {
+      if (attempt) yield { type: "answer_delta", payload: { text: "I hit an error reaching the reasoning model — please ask again." } };
     }
-  } catch (e: any) {
-    yield { type: "answer_delta", payload: { text: "I hit an error reaching the reasoning model — please ask again." } };
   }
   yield { type: "answer_done", payload: {} };
 }

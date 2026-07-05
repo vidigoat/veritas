@@ -15,12 +15,11 @@ export function FindingCard({ f, onOpenDoc, reveal = true, cur = "\u20AC" }: { f
       className="rounded-card border border-crimson/25 bg-white shadow-card overflow-hidden">
       <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-crimson border-b border-crimson/15 bg-crimson-pale flex items-center gap-1.5">
         <ShieldCheck size={13} weight="fill" /> {SCHEME_LABEL[f.scheme] ?? "finding"} · <span className="mono">{f.id}</span>
-        {f.nemotron?.overridden && <span className="ml-auto normal-case font-medium tracking-normal" style={{ color: "#B7791F" }}>filed over panel objection — document-proven</span>}
       </div>
       <div className="p-4">
         <div className="flex items-baseline gap-3 flex-wrap">
           <div className="mono text-[26px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(f.amount))}</div>
-          <div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence{f.nemotron?.upheld ? " · upheld by the panel" : ""}</div>
+          <div className="text-[12.5px] text-ink-50">at risk · {Math.round((f.confidence ?? 0) * 100)}% confidence{f.nemotron?.upheld ? " · upheld by the independent Nemotron review" : ""}</div>
         </div>
         {reveal
           ? <RevealText text={f.statement} className="text-[14.5px] leading-relaxed text-ink mt-3" />
@@ -52,14 +51,14 @@ export function ClearedCard({ title, why }: { title?: string; why?: string }) {
 }
 
 /** An unproven lead — escalated for manual review, no accusation filed. */
-export function UnprovenCard({ title }: { title?: string }) {
+export function UnprovenCard({ title, why }: { title?: string; why?: string }) {
   return (
     <div className="rounded-card border border-hairline bg-cream px-4 py-3">
       <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-50">
         <Scales size={13} weight="duotone" /> Unproven — escalated for manual review
       </div>
       {title && <div className="text-[14px] text-ink mt-1">{title}</div>}
-      <div className="text-[13px] text-ink-70 mt-0.5">The evidence cuts both ways, so VERITAS does not accuse. A human examiner gets the file.</div>
+      <div className="text-[13px] text-ink-70 mt-0.5">{why ?? "The evidence cuts both ways, so VERITAS does not accuse. A human examiner gets the file."}</div>
     </div>
   );
 }
@@ -77,7 +76,7 @@ export function VerdictBanner({ state }: { state: CorpusState }) {
         <div className="flex items-baseline gap-4 flex-wrap">
           <div className="mono text-[30px] font-semibold text-crimson leading-none">{cur}{fmt(Math.round(total))}</div>
           <div className="text-[13px] text-ink-50">
-            at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared{state.unproven.length ? ` · ${state.unproven.length} escalated` : ""} · {upheld}/{state.findings.length} upheld by independent review
+            at risk · {state.findings.length} finding{state.findings.length !== 1 ? "s" : ""} · {state.cleared.length} cleared{state.unproven.length ? ` · ${state.unproven.length} escalated` : ""} · {upheld}/{state.findings.length} upheld by the independent Nemotron review
           </div>
         </div>
       </div>

@@ -71,12 +71,15 @@ cd /root/veritas && git pull && pnpm install \
 
 ## 3. Resilience & abuse guards (already built in)
 
-- **Demo replay fallback.** The console bundles a recording of a real run
-  (`web/public/demo-v2.json`). If the engine is unreachable, "Examine the demo company"
-  automatically replays it — the public URL can never show a dead demo.
 - **Live-run guards.** `/api/v2/run` is capped at 3 concurrent runs and 12 runs/IP/hour;
-  the fixture recorder is localhost-only; a global spend kill-switch stops all inference
-  at $150. A typical full examination costs ~$0.01.
+  a global spend kill-switch stops all inference at $150. A typical full examination
+  costs ~$0.01.
+- **Refresh-proof streams.** Every run event is journaled server-side; an SSE reconnect
+  (or a page refresh) replays the log from the last-seen index, so a flaky network never
+  loses a live examination.
+- **Model resilience.** Chat calls retry with one pre-output failover; zero-token streams
+  retry once; the Nemotron reviewers abstain (never uphold) on error; a lead whose models
+  are unreachable resolves as *unproven — escalated*, never as an accusation.
 
 ## 4. Health check
 

@@ -37,7 +37,7 @@ export interface Finding {
 }
 
 // ── Streaming event vocabulary (SSE → UI) ────────────────────────────────────
-export type Phase = "ingest" | "map" | "reduce" | "investigate" | "verify" | "report";
+export type Phase = "ingest" | "plan" | "map" | "reduce" | "investigate" | "verify" | "report";
 export interface CaseEvent { id: string; ts: number; type: string; phase: Phase | null; payload: any }
 // event types the UI understands:
 //  corpus_loaded {stats,total} · fleet_start {shards,model} · drone_start {i,docs} · drone_done {i,found}

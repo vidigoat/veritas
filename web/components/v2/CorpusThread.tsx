@@ -117,7 +117,7 @@ export function CorpusThread({ state, engagement, onOpenDoc, onAsk, onApprove }:
                 {state.findings.length > 0 && <Label>Findings</Label>}
                 {state.findings.map(fn => <FindingCard key={fn.id} f={fn} onOpenDoc={onOpenDoc} reveal={false} cur={state.corpus?.currency ?? "\u20AC"} />)}
                 {state.cleared.map((cl, i) => <ClearedCard key={i} title={cl.anomaly?.title} why={cl.why} />)}
-                {state.unproven.map((u, i) => <UnprovenCard key={i} title={u.anomaly?.title} />)}
+                {state.unproven.map((u, i) => <UnprovenCard key={i} title={u.anomaly?.title} why={u.why} />)}
                 {state.findings.length > 0 ? <VerdictBanner state={state} /> : (
                   <div className="rounded-card border border-nvidia/30 bg-nvidia-pale px-4 py-3 text-[15px]"><b>No material findings.</b> Every lead cleared — the books present no evidence of fraud. VERITAS does not cry wolf.</div>
                 )}

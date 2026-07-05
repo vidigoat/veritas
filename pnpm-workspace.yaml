@@ -8,7 +8,7 @@ allowBuilds:
   sharp: true
   esbuild: true
   better-sqlite3: true
-  core-js: set this to true or false
+  core-js: false
 onlyBuiltDependencies:
   - better-sqlite3
   - esbuild

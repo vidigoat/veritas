@@ -13,6 +13,7 @@
  */
 import { env } from "./env.js";
 import type { ModelTier } from "@veritas/shared";
+export type { ModelTier };
 
 const BASE = "https://api.vultrinference.com/v1/chat/completions";
 export const MODELS: Record<ModelTier, string> = {

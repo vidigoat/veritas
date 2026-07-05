@@ -1,12 +1,21 @@
 /**
  * VERITAS v2 — the document-scale forensic orchestrator (async generator).
  *
- *  INGEST → MAP(fleet) → REDUCE(detect) → INVESTIGATE(deep-dive) → VERIFY(Nemotron) → REPORT
+ *  INGEST → PLAN → MAP(fleet) → REDUCE(detect) → INVESTIGATE(deep-dive) → VERIFY(Nemotron) → REPORT
  *
  *  Reads a corpus you upload. The Nemotron drone-fleet extracts facts in parallel;
- *  detection runs on those facts; a deep-dive subagent works each anomaly to a
- *  verdict against the retrieved source documents; Nemotron independently reviews
- *  every confirmed finding. Every model runs on Vultr Serverless Inference.
+ *  detection runs on those facts; a deep-dive examiner works each anomaly through
+ *  TWO retrieval rounds (the second with a query the model writes itself) to a
+ *  verdict; an independent Nemotron panel then reviews every accusation.
+ *
+ *  THE FILING RULE — no accusation on one model family's say-so:
+ *    a finding is filed only when the Qwen examiner CONFIRMS it on the retrieved
+ *    documents AND the NVIDIA Nemotron panel independently UPHOLDS it. Any other
+ *    combination clears the lead (cited innocent explanation) or escalates it as
+ *    unproven. Deterministic code keeps only the arithmetic: ledger amounts,
+ *    detection priors, and the fail-safes when a model is unreachable — which
+ *    fail toward "unproven", never toward an accusation.
+ *    Every model runs on Vultr Serverless Inference.
  */
 import { randomUUID } from "node:crypto";
 import { subagent, fanOut } from "./agents.js";
@@ -16,49 +25,35 @@ import { detectAnomalies } from "./detect.js";
 import { rerank } from "./retriever.js";
 import { nemotronPanel } from "./panel.js";
 import { CaseBrain } from "./brain.js";
-import { EXAMINER_METHOD, schemePrompt } from "./fraud-kb.js";
-import { getSpend, MODELS, streamChat } from "./llm.js";
+import { schemePrompt } from "./fraud-kb.js";
+import { chat, getSpend, MODELS, streamChat } from "./llm.js";
 import type { Corpus, CaseEvent, Finding, Anomaly, Phase } from "./contracts.js";
 
 export interface RunResult { findings: Finding[]; cleared: Anomaly[]; brain: any; corpus: { stats: any; total: number }; usd: number; elapsedS: number; events: CaseEvent[] }
 
 // Exact-string document evidence (identical address / shared bank account) is
-// dispositive above this strength. Softer leads — including the un-reversed
-// duplicate at 0.7 — are genuinely adjudicated by the model and the Nemotron panel.
+// dispositive above this strength. It sets the examiner's PRIOR — the verdict
+// itself is decided by the models (examiner + Nemotron panel). The only role
+// dispositive evidence keeps in the outcome is the fail-safe: if the examiner
+// is UNREACHABLE mid-run, a dispositive lead may still be put to the Nemotron
+// panel on the documents alone rather than silently dropped.
 const IRONCLAD = 0.78;
 
 const REASON_SYSTEM = `You are VERITAS, a senior forensic accountant working a flagged lead. In 2-3 sentences, first person, present tense, think out loud: state your fraud hypothesis and the single strongest INNOCENT explanation you must rule out, then say what you will retrieve to test it. Be concrete about THIS company's documents — name the entities and figures. Then on a FINAL line output exactly: FOLLOWUP: <an 8-16 word retrieval query for the documents that would prove or kill that innocent explanation>. No JSON, no headings, no preamble.`;
 
-const THINK_SYSTEM = `You are VERITAS, a senior forensic accountant working a flagged lead. In 2-3 sentences, first person, present tense, think out loud: state your fraud hypothesis and the single strongest INNOCENT explanation you must rule out before you would ever accuse. Be concrete about THIS company's documents. Then, on a FINAL line, output exactly: FOLLOWUP: <an 8-16 word retrieval query for the documents that would prove or kill that innocent explanation>. No headings, no preamble, no JSON.`;
+const WEIGH_SYSTEM = `You are VERITAS, a senior forensic accountant delivering your verdict on a flagged lead. You hypothesized, then retrieved a SECOND round of documents with your own follow-up query to test the innocent explanation. Weigh BOTH rounds of evidence and decide.
 
-const VERDICT_STREAM_SYSTEM = `You are VERITAS, a senior forensic accountant. You hypothesized, then retrieved a SECOND round of documents to test the innocent explanation. In 2-4 sentences, first person, deliver your verdict reasoning — weigh BOTH rounds and state the decisive fact.
-IMPORTANT — the retrieval swept the company's COMPLETE books. If a record you would expect (a purchase order, a contract, a reversing credit note) was not surfaced, it does not exist, and that ABSENCE is itself evidence.
-Then output exactly two FINAL lines:
-VERDICT: confirmed | cleared | unproven
-CONFIDENCE: 0.NN
-Use "cleared" only if the innocent explanation holds with evidence; "unproven" only if the evidence genuinely cuts both ways; otherwise "confirmed". No JSON, no other headings.`;
-
-const HYPOTHESIZE_SYSTEM = `You are VERITAS, a senior forensic accountant. An anomaly has been flagged. Do NOT reach a verdict yet — first apply steps 1-2 of the examiner's method: state the fraud hypothesis, name the strongest INNOCENT explanation, and decide what additional evidence you need to retrieve to test it.
-
-${EXAMINER_METHOD}
-
-You are given the anomaly and a first set of retrieved source documents. Respond with ONE JSON object:
-{"hypothesis":"one falsifiable sentence","innocent_explanation":"the strongest innocent explanation for this pattern","followup_query":"a specific retrieval query (10-20 words) for the documents that would prove or kill the innocent explanation","reasoning":"one sentence on what you are checking and why"}`;
-
-const VERDICT_SYSTEM = `You are VERITAS, a senior forensic accountant. You hypothesized, then retrieved a SECOND round of documents to test the innocent explanation. Now weigh ALL the evidence and reach the verdict.
-
-${EXAMINER_METHOD}
-
-IMPORTANT — the retrieval swept the company's COMPLETE books. If a record you would expect (a purchase order, a contract, an onboarding file, a reversing credit note) was not surfaced, it does not exist in the books — and that ABSENCE is itself evidence. Do not mark a verdict "unproven" merely because you wish for a document type these books never contained.
+IMPORTANT — the follow-up retrieval swept the company's COMPLETE books. If a record you would expect (a purchase order, a contract, an onboarding file, a reversing credit note) was not surfaced, it does not exist in the books — and that ABSENCE is itself evidence. Do not answer "unproven" merely because you wish for a document type these books never contained.
 
 Calibration:
-- A vendor registered at an employee's exact home address, with no tax ID, one approver, and no POs, is a textbook ACFE shell scheme — confirm unless a specific document provides the innocent explanation.
-- Two employees paid to the same bank account, where one has a thin file (no email, recent join), is a textbook ghost employee.
-- Two debits carrying the SAME invoice reference with no reversing credit note anywhere in the books is a duplicate-payment loss — a legitimate split payment would reference different invoices or instalments.
+- A vendor registered at an employee's exact home address, with no tax ID, a single approver, and no purchase orders, is a textbook ACFE shell scheme — confirm unless a specific retrieved document provides the innocent explanation.
+- Two employees paid into the same bank account, where one has a thin file (no email, recent join), is a textbook ghost-employee scheme.
+- Two debits carrying the SAME invoice reference with no reversing credit note anywhere in the books is a duplicate-payment loss; if a matching credit note reverses it, it is a caught accounting error — clear it.
 
-Respond with ONE JSON object:
-{"verdict":"confirmed"|"cleared"|"unproven","confidence":0.0-1.0,"statement":"one-paragraph finding in plain English","evidence":[{"claim":"...","docIds":["..."]}],"reasoning":"ONE affirmative sentence stating the decisive evidence for the verdict (e.g. 'The registration and HR file show the identical address, and the books contain no PO or contract that could explain it.')"}
-Cite the specific documents. Use "cleared" if the innocent explanation HOLDS with evidence; "unproven" only when the evidence genuinely cuts both ways.`;
+In 2-4 sentences, first person, present tense, deliver your verdict reasoning: state the decisive fact from the documents (name the exact document ids) and dispose of the innocent explanation. Then output exactly two FINAL lines:
+VERDICT: confirmed | cleared | unproven
+CONFIDENCE: 0.NN
+Use "cleared" only if the innocent explanation HOLDS with a cited document; "unproven" only if the evidence genuinely cuts both ways. No JSON, no other headings.`;
 
 export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<CaseEvent, RunResult> {
   const t0 = Date.now();
@@ -122,17 +117,25 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   // fails, the deterministic guards below still decide the verdict.
   const streamReason = async (stepId: string, system: string, user: string, maxTokens: number, kind: string): Promise<string> => {
     let full = "", shown = 0; let sealed = false;
-    const TAIL = /\n\s*(FOLLOW[-\s]?UP|VERDICT|CONFIDENCE)\s*:/i;
-    try {
-      for await (const d of streamChat("senior", [{ role: "system", content: system }, { role: "user", content: user }], { maxTokens, noThink: true, timeoutMs: 22000 })) {
-        full += d;
-        if (sealed) continue;
-        const m = full.match(TAIL);
-        const visibleEnd = m ? m.index! : full.length;
-        if (visibleEnd > shown) { emit(mk("reasoning_delta", { stepId, delta: full.slice(shown, visibleEnd), kind }, "investigate")); shown = visibleEnd; }
-        if (m) sealed = true;
-      }
-    } catch { /* streamed reasoning is best-effort */ }
+    // seal the machine-readable tail from the visible stream. FOLLOWUP:/VERDICT:
+    // sometimes arrive on the SAME line as prose, so match the token itself (with
+    // its colon) — prose says "follow-up query", never "FOLLOWUP:".
+    const TAIL = /\bFOLLOW[-\s]?UP\s*:|\n\s*(VERDICT|CONFIDENCE)\s*:|\bVERDICT\s*:/i;
+    // a burst of concurrent calls can get rate-limited mid-run — retry a stream
+    // that produced NOTHING once (a partial stream is never restarted mid-screen)
+    for (let attempt = 0; attempt < 2 && !full; attempt++) {
+      if (attempt) await new Promise(res => setTimeout(res, 1500));
+      try {
+        for await (const d of streamChat("senior", [{ role: "system", content: system }, { role: "user", content: user }], { maxTokens, noThink: true, timeoutMs: 22000 })) {
+          full += d;
+          if (sealed) continue;
+          const m = full.match(TAIL);
+          const visibleEnd = m ? m.index! : full.length;
+          if (visibleEnd > shown) { emit(mk("reasoning_delta", { stepId, delta: full.slice(shown, visibleEnd), kind }, "investigate")); shown = visibleEnd; }
+          if (m) sealed = true;
+        }
+      } catch { /* retry once if nothing arrived; the caller's fail-safes cover the rest */ }
+    }
     emit(mk("reasoning_end", { stepId, kind }, "investigate"));
     return full;
   };
@@ -183,51 +186,107 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
     emit(mk("reasoning", { stepId, text: `Investigating: ${a.title}`, scheme: a.scheme }, "investigate"));
     const needles = anomalyNeedles(a);
 
-    // ── SEARCH №1 — surface the lead's own evidence (fast rerank) ──
+    // ── SEARCH №1 — surface the lead's own evidence (VultronRetriever Core) ──
     const cand = corpusCandidates(corpus, a);
     let ranked: { docId: string; text: string; score: number }[];
     try { ranked = await rerank(a.detail, cand, { topN: 5, tier: "core" }); }
     catch { ranked = cand.slice(0, 5).map(c => ({ docId: c.docId, text: c.text, score: 0 })); }
-    emit(mk("retrieval", { stepId, query: a.title.slice(0, 80), candidates: cand.length, surfaced: ranked.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
+    emit(mk("retrieval", { stepId, model: "VultronRetriever Core-4.5B", query: a.title.slice(0, 80), candidates: cand.length, surfaced: ranked.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
     const evidence1 = ranked.map(r => `--- ${r.docId} ---\n${excerptFor(r.text, needles, 850)}`).join("\n\n");
 
-    // ── REASON (STREAMED, one pass): think out loud, name the innocent explanation,
-    //  and write its own follow-up query. Best-effort — the OUTCOME is decided by the
-    //  documents (below), so a slow/stalled model can never break or delay a verdict. ──
+    // ── REASON (STREAMED): think out loud, name the innocent explanation, and
+    //  write its own follow-up query for the second retrieval round. ──
     const dossier = `${schemePrompt(a.scheme)}\n\nFLAGGED LEAD: ${a.detail}\nSubjects: ${a.subjectIds.join(", ")}\n\nRETRIEVED DOCUMENTS:\n${evidence1}`;
-    const think = await streamReason(stepId, REASON_SYSTEM, dossier, 240, "hypothesis");
+    const think = await streamReason(stepId, REASON_SYSTEM, dossier, 340, "hypothesis");
     const followup_query = (think.match(/FOLLOW[-\s]?UP:\s*(.+)$/im)?.[1]
       || `${a.subjectIds.filter(Boolean).join(" ")} purchase orders contracts approvals`).trim().slice(0, 140);
-    const statement = (think.split(/\n?\s*FOLLOW[-\s]?UP:/i)[0] || "").replace(/\s+/g, " ").trim();
+    const hypothesis = (think.split(/\n?\s*FOLLOW[-\s]?UP:/i)[0] || "").replace(/\s+/g, " ").trim();
 
-    // ── SEARCH №2 — the agent's OWN follow-up query, testing the innocent explanation ──
+    // ── SEARCH №2 — the examiner's OWN follow-up query, testing the innocent
+    //  explanation. The decisive question gets the precision tier: Prime-8B. ──
     const cand2 = queryCandidates(corpus, followup_query, a);
     let ranked2: { docId: string; text: string; score: number }[] = [];
-    try { ranked2 = await rerank(followup_query, cand2, { topN: 4, tier: "core" }); }
+    try { ranked2 = await rerank(followup_query, cand2, { topN: 4, tier: "prime" }); }
     catch { ranked2 = cand2.slice(0, 4).map(c => ({ docId: c.docId, text: c.text, score: 0 })); }
-    emit(mk("retrieval", { stepId, followup: true, query: followup_query.slice(0, 90), candidates: cand2.length, surfaced: ranked2.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
+    emit(mk("retrieval", { stepId, followup: true, model: "VultronRetriever Prime-8B", query: followup_query.slice(0, 90), candidates: cand2.length, surfaced: ranked2.map(r => ({ docId: r.docId, score: +r.score.toFixed(2) })) }, "investigate"));
+    const evidence2 = ranked2.map(r => `--- ${r.docId} ---\n${excerptFor(r.text, needles, 700)}`).join("\n\n") || "(nothing further surfaced — the books contain no additional record matching the query)";
 
-    // ── OUTCOME — decided by DISPOSITIVE document evidence, never by a model hiccup:
-    //  an exact identity match (shell/ghost) or an un-reversed duplicate is a proven
-    //  loss; a ledger-reversed duplicate (amount 0) is a caught error → cleared. On
-    //  CLEAN books the detector finds none of these, so nothing is filed. ──
+    // ── VERDICT (STREAMED, load-bearing): the examiner weighs BOTH retrieval
+    //  rounds and decides. This model call determines the outcome — if it fails,
+    //  the fail-safe below runs toward "unproven", never toward an accusation. ──
+    const weighUser = `${schemePrompt(a.scheme)}\n\nFLAGGED LEAD: ${a.detail}\nSubjects: ${a.subjectIds.join(", ")}\nLedger exposure (recomputed deterministically): ${(a.amount ?? 0) > 0 ? Math.round(a.amount!).toLocaleString("en-US") : "0 (a matching credit reverses the cash out)"}\n\nYOUR HYPOTHESIS (round 1): ${hypothesis || "(streaming failed — reason from the documents alone)"}\n\nROUND-1 DOCUMENTS:\n${evidence1}\n\nYOUR FOLLOW-UP QUERY: ${followup_query}\nROUND-2 DOCUMENTS (the complete books were swept):\n${evidence2}\n\nDeliver your verdict.`;
+    let weigh = await streamReason(stepId, WEIGH_SYSTEM, weighUser, 360, "verdict");
+    if (!/VERDICT:\s*(confirmed|cleared|unproven)/i.test(weigh)) {
+      // the stream flaked — one non-streaming retry so the examiner still decides
+      try {
+        const retry = await chatOnce(WEIGH_SYSTEM, weighUser);
+        if (retry) { weigh = retry; emit(mk("reasoning_delta", { stepId, delta: retry.split(/\n?\s*(?:VERDICT|CONFIDENCE)\s*:/i)[0] ?? "", kind: "verdict" }, "investigate")); emit(mk("reasoning_end", { stepId, kind: "verdict" }, "investigate")); }
+      } catch { /* the fail-safes below decide */ }
+    }
+    const parsedVerdict = weigh.match(/VERDICT:\s*(confirmed|cleared|unproven)/i)?.[1]?.toLowerCase() as "confirmed" | "cleared" | "unproven" | undefined;
+    const parsedConf = clamp01(parseFloat(weigh.match(/CONFIDENCE:\s*(0?\.\d+|1(?:\.0+)?)/i)?.[1] ?? ""), 0.8);
+    const verdictStatement = (weigh.split(/\n?\s*(?:VERDICT|CONFIDENCE)\s*:/i)[0] || "").replace(/\s+/g, " ").trim();
+
+    // deterministic facts that gate ONLY the fail-safes (never override the examiner):
     const dispositive = a.strength >= IRONCLAD || (a.scheme === "duplicate_payment" && (a.amount ?? 0) > 0);
     const reversedHerring = a.scheme === "duplicate_payment" && (a.amount ?? 0) === 0;
-    const verdict = dispositive ? "confirmed" : reversedHerring ? "cleared" : "unproven";
-    emit(mk("reasoning_verdict", { stepId, verdict, statement: statement || a.detail }, "investigate"));
-    if (verdict === "cleared") { cleared.push(a); emit(mk("cleared", { anomaly: a, why: statement || "A matching credit note reverses this payment three days later — a caught accounting error, not a loss." }, "investigate")); return; }
-    if (verdict !== "confirmed") { emit(mk("unproven", { anomaly: a }, "investigate")); return; }
 
-    // ── VERIFY: independent review panel (3 lenses, parallel, fail-open, tight) ──
+    let verdict: "confirmed" | "cleared" | "unproven";
+    let examinerAnswered = !!parsedVerdict;
+    if (parsedVerdict) {
+      verdict = parsedVerdict;
+    } else if (reversedHerring) {
+      // examiner unreachable, but the ledger nets to zero — arithmetic, not judgment
+      verdict = "cleared";
+    } else if (dispositive) {
+      // examiner unreachable on dispositive documents → put it to the Nemotron
+      // panel on the documents alone (below); never auto-file without a model
+      verdict = "confirmed";
+    } else {
+      verdict = "unproven";
+    }
+    const statement = verdictStatement || hypothesis || a.detail;
+    emit(mk("reasoning_verdict", { stepId, verdict, statement, confidence: examinerAnswered ? parsedConf : undefined, examinerAnswered }, "investigate"));
+
+    if (verdict === "cleared") {
+      cleared.push(a);
+      emit(mk("cleared", { stepId, anomaly: a, why: statement }, "investigate"));
+      return;
+    }
+    if (verdict !== "confirmed") { emit(mk("unproven", { stepId, anomaly: a }, "investigate")); return; }
+
+    // ── VERIFY (BINDING): the independent Nemotron panel — a different model
+    //  family — must uphold, or the accusation is NOT filed. 3 lenses, parallel,
+    //  abstentions never uphold. ──
+    const evidence = [
+      { claim: a.detail, doc_ids: a.proofDocs },
+      ...(ranked2.length ? [{ claim: `Follow-up sweep of the complete books ("${followup_query}") — pages weighed in the verdict`, doc_ids: ranked2.slice(0, 3).map(r => r.docId) }] : []),
+    ];
     const candidate = {
-      id: `F-${++fid}`, scheme: a.scheme, statement: statement || a.detail, amount: a.amount ?? 0,
-      evidence: [{ claim: a.detail, doc_ids: a.proofDocs }], confidence: +Math.max(a.strength, 0.9).toFixed(2),
+      id: `F-${++fid}`, scheme: a.scheme, statement, amount: a.amount ?? 0,
+      evidence, confidence: examinerAnswered ? parsedConf : +Math.min(a.strength, 0.85).toFixed(2),
     };
-    emit(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, lenses: ["correctness", "innocent explanation", "sufficiency"] }, "investigate"));
+    emit(mk("nemotron_panel", { finding: candidate.id, stepId, reviewing: true, model: "NVIDIA Nemotron Cascade-2", lenses: ["correctness", "innocent explanation", "sufficiency"] }, "investigate"));
     const panel = await nemotronPanel(candidate as any);
-    emit(mk("nemotron_panel", { finding: candidate.id, stepId, done: true, upheld: panel.upheld, votes: panel.votes, summary: panel.upheld ? `Upheld by the independent review — ${panel.reasoning}` : `Filed on dispositive document evidence — one reviewer objected, recorded on the finding.` }, "investigate"));
-    const finding: Finding = { ...candidate, verdict: "confirmed", nemotron: { upheld: panel.upheld, reasoning: panel.reasoning, overridden: !panel.upheld } as any,
-      recommendedActions: recActions(a), evidence: candidate.evidence } as any;
+    emit(mk("nemotron_panel", {
+      finding: candidate.id, stepId, done: true, upheld: panel.upheld, votes: panel.votes, model: "NVIDIA Nemotron Cascade-2",
+      summary: panel.upheld
+        ? `Upheld by the independent Nemotron review — ${panel.reasoning}`
+        : `REFUTED by the independent Nemotron review — the accusation is NOT filed. ${panel.reasoning}`,
+    }, "investigate"));
+
+    if (!panel.upheld) {
+      // two model families must agree before VERITAS accuses anyone
+      emit(mk("unproven", { stepId, anomaly: a, why: `The examiner confirmed, but the independent Nemotron panel refused to uphold — ${panel.reasoning}. Escalated for manual review instead of filed.` }, "investigate"));
+      return;
+    }
+    const upConf = panel.votes.filter(v => !v.abstained && v.upheld).map(v => v.confidence);
+    const confidence = +Math.min(candidate.confidence, upConf.length ? Math.min(...upConf) : candidate.confidence, 0.97).toFixed(2);
+    const finding: Finding = {
+      ...candidate, confidence, verdict: "confirmed",
+      nemotron: { upheld: true, reasoning: panel.reasoning, model: panel.model } as any,
+      recommendedActions: recActions(a), evidence: candidate.evidence,
+    } as any;
     findings.push(finding);
     emit(mk("finding", { finding }, "investigate"));
   };
@@ -237,7 +296,7 @@ export async function* runCorpus(dir: string, brief?: string): AsyncGenerator<Ca
   // `wake` forever (or die as an unhandled rejection) mid-demo.
   let settled = false;
   const onSettle = () => { settled = true; const w = wake; wake = null; w?.(); };
-  Promise.all([fleetTask, fanOut(top, a => investigateOne(a), { concurrency: 2 })]).then(onSettle, onSettle);
+  Promise.all([fleetTask, fanOut(top, a => investigateOne(a), { concurrency: 3 })]).then(onSettle, onSettle);
   while (true) {
     if (chan.length) { yield chan.shift()!; continue; }
     if (settled) break;
@@ -363,6 +422,16 @@ function queryCandidates(corpus: Corpus, query: string, a: Anomaly) {
   scored.sort((x, y) => y.s - x.s);
   return scored.slice(0, 30).map(({ s, ...rest }) => rest);
 }
+/** Clamp a parsed confidence into a sane band; fall back when the model omitted it. */
+const clamp01 = (n: number, dflt: number) => Number.isFinite(n) ? +Math.max(0.5, Math.min(0.97, n)).toFixed(2) : dflt;
+
+/** One bounded, non-streaming senior call — the verdict retry path. */
+async function chatOnce(system: string, user: string): Promise<string | null> {
+  const res = await chat("senior", [{ role: "system", content: system }, { role: "user", content: user }], undefined, { maxTokens: 300, noThink: true, timeoutMs: 20_000 });
+  const raw = (res.message.content ?? (res.message as any).reasoning ?? "").toString().trim();
+  return raw || null;
+}
+
 const recActions = (a: Anomaly): string[] => a.scheme === "shell_company"
   ? [`Freeze vendor ${a.subjectIds[0]}`, `Refer ${a.subjectIds[1]} to counsel`, `Review all approvals by ${a.subjectIds[1]}`]
   : a.scheme === "ghost_employee" ? [`Suspend payroll for ${a.subjectIds[0]}`, `Investigate ${a.subjectIds[1]}`]

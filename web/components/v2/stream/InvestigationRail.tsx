@@ -17,9 +17,15 @@ import { RevealText } from "./PhaseHeader";
 import { FindingCard, ClearedCard, UnprovenCard } from "./Findings";
 
 // hide the machine-readable tail the server sometimes leaks into streamed prose
+// (same-line tails and mid-word truncation fragments included)
 function cleanHyp(h?: string): string {
   if (!h) return "";
-  return h.replace(/\n\s*(FOLLOW[-\s]?UP|VERDICT|CONFIDENCE)\s*:[\s\S]*$/i, "").trim();
+  return h
+    .replace(/\bFOLLOW[-\s]?UP\s*:[\s\S]*$/i, "")
+    .replace(/\n\s*(VERDICT|CONFIDENCE)\s*:[\s\S]*$/i, "")
+    .replace(/\bVERDICT\s*:[\s\S]*$/i, "")
+    .replace(/\s*\bFOLLOW(-?\s?UP)?\s*$/i, "")
+    .trim();
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -81,7 +87,7 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions, currency
               {first && <SubStep icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={first} onOpenDoc={onOpenDoc} /></SubStep>}
               {(hyp || st.hypStreaming) && <SubStep icon={<IconBadge><Brain size={13} weight="duotone" /></IconBadge>}><Thinking text={hyp} streaming={!!st.hypStreaming} /></SubStep>}
               {followups.map((r, i) => <SubStep key={i} icon={<BrandBadge><VultrFavicon size={13} /></BrandBadge>}><RetrievalBody r={r} onOpenDoc={onOpenDoc} /></SubStep>)}
-              {st.verdictStatement && <SubStep icon={<IconBadge tone={st.verdict}><Scales size={13} weight="duotone" /></IconBadge>}><Verdict statement={st.verdictStatement} verdict={st.verdict} /></SubStep>}
+              {(st.verdictStatement || st.verdictStreaming) && <SubStep icon={<IconBadge tone={st.verdictStreaming ? undefined : st.verdict}><Scales size={13} weight="duotone" /></IconBadge>}><Verdict statement={cleanHyp(st.verdictStatement)} verdict={st.verdict} streaming={!!st.verdictStreaming} /></SubStep>}
               {st.panel && <SubStep icon={<BrandBadge><NvidiaFavicon size={13} /></BrandBadge>}><Panel panel={st.panel} /></SubStep>}
               {st.errorText && <SubStep icon={<IconBadge><Scales size={13} weight="duotone" /></IconBadge>}><div className="text-[13.5px] text-ink-50">{st.errorText}</div></SubStep>}
             </div>
@@ -89,7 +95,7 @@ function StepBlock({ st, findings, running, onOpenDoc, showResolutions, currency
             {/* the payoff of this lead */}
             {showResolutions && finding && <div className="mt-3"><FindingCard f={finding} onOpenDoc={onOpenDoc} cur={currency} /></div>}
             {showResolutions && kind === "cleared" && <div className="mt-3"><ClearedCard title={st.title} why={st.resolution?.why} /></div>}
-            {showResolutions && kind === "unproven" && <div className="mt-3"><UnprovenCard title={st.title} /></div>}
+            {showResolutions && kind === "unproven" && <div className="mt-3"><UnprovenCard title={st.title} why={st.resolution?.why} /></div>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -184,28 +190,38 @@ function Thinking({ text, streaming }: { text: string; streaming: boolean }) {
   );
 }
 
-function Verdict({ statement, verdict }: { statement: string; verdict?: string }) {
-  const label = verdict === "confirmed" ? "Verdict — confirmed" : verdict === "cleared" ? "Verdict — cleared" : "Verdict — unproven";
-  const color = verdict === "confirmed" ? "#C0182A" : verdict === "cleared" ? "#4a7300" : "#8A8A82";
+/** The verdict pass — streams live while the examiner weighs both retrieval
+ *  rounds, then locks to the verdict color the moment it decides. */
+function Verdict({ statement, verdict, streaming }: { statement: string; verdict?: string; streaming?: boolean }) {
+  const label = streaming || !verdict ? "Weighing both rounds of evidence"
+    : verdict === "confirmed" ? "Verdict — confirmed" : verdict === "cleared" ? "Verdict — cleared" : "Verdict — unproven";
+  const color = streaming || !verdict ? "#57574F" : verdict === "confirmed" ? "#C0182A" : verdict === "cleared" ? "#4a7300" : "#8A8A82";
   return (
     <div>
       <div className="mono text-[10.5px] font-semibold uppercase tracking-[0.12em] mb-1" style={{ color }}>{label}</div>
-      <RevealText text={statement} className="text-[14.5px] leading-relaxed text-ink" />
+      {streaming ? (
+        statement
+          ? <div className="text-[14.5px] leading-relaxed text-ink" style={{ maxWidth: "62ch" }}>{statement}<span className="caret" /></div>
+          : <span className="inline-flex items-center gap-1.5"><span className="tdot" /><span className="tdot" style={{ animationDelay: ".16s" }} /><span className="tdot" style={{ animationDelay: ".32s" }} /></span>
+      ) : (
+        <RevealText text={statement} className="text-[14.5px] leading-relaxed text-ink" />
+      )}
     </div>
   );
 }
 
-/** The independent review — 3 lens votes, one line each. */
+/** The independent review — a PANEL of NVIDIA Nemotron examiners, one vote per
+ *  lens. Binding: a refuted accusation is never filed. */
 function Panel({ panel }: { panel: StepPanel }) {
   const rows = panel.votes ?? (panel.lenses ?? ["correctness", "innocent explanation", "sufficiency"]).map(l => ({ lens: l } as any));
   const reviewing = !panel.done;
   return (
     <div className="rounded-card border bg-nvidia-pale overflow-hidden" style={{ borderColor: "#D9EBBF", maxWidth: 560 }}>
       <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "#E4F0CE" }}>
-        <span className="text-[12.5px] font-semibold" style={{ color: "#4a7300" }}>Independent review</span>
+        <span className="text-[12.5px] font-semibold" style={{ color: "#4a7300" }}>Independent review — {panel.model ?? "NVIDIA Nemotron"} panel</span>
         {panel.done
-          ? <span className="mono text-[11px] ml-auto font-bold" style={{ color: panel.upheld ? "#4a7300" : "#C0182A" }}>{panel.upheld ? "UPHELD" : "REFUTED"}</span>
-          : <span className="mono text-[11px] ml-auto text-ink-50">reviewing…</span>}
+          ? <span className="mono text-[11px] ml-auto font-bold" style={{ color: panel.upheld ? "#4a7300" : "#C0182A" }}>{panel.upheld ? "UPHELD" : "REFUTED — NOT FILED"}</span>
+          : <span className="mono text-[11px] ml-auto text-ink-50">3 examiners reviewing…</span>}
       </div>
       <div className="px-3 py-2 space-y-1.5">
         {rows.map((v: any, i: number) => {

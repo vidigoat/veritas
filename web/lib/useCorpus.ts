@@ -23,10 +23,11 @@ export interface Step {
   scheme?: string;
   title?: string;
   retrievals: Retrieval[];
-  hypothesis?: string;       // accumulated streamed "thinking out loud" prose
+  hypothesis?: string;       // accumulated streamed "thinking out loud" prose (round 1)
   hypStreaming?: boolean;    // tokens still arriving
   verdict?: string;          // confirmed | cleared | unproven
-  verdictStatement?: string; // the delivered finding paragraph
+  verdictStatement?: string; // the verdict reasoning — streams live, then finalized
+  verdictStreaming?: boolean;
   errorText?: string;        // fail-safe unproven message
   panel?: StepPanel;
   resolution?: { kind: "confirmed" | "cleared" | "unproven"; why?: string; findingId?: string };
@@ -50,7 +51,7 @@ export interface CorpusState {
   steps: Step[];
   findings: Finding[];
   cleared: { anomaly?: Anomaly; why?: string }[];
-  unproven: { anomaly?: Anomaly }[];
+  unproven: { anomaly?: Anomaly; why?: string }[];
   verdict?: { findings: number; total: number; confidence: number; cleared: number };
   usage?: { usd: number };
   elapsedS?: number;
@@ -99,15 +100,20 @@ function reduce(s: CorpusState, ev: any): CorpusState {
       }
       if (p.verdict) st.verdict = p.verdict;
     });
-    // STREAMING: accumulate the model's live "thinking out loud" per step
-    case "reasoning_delta": return upStep(p.stepId, st => { st.hypothesis = (st.hypothesis ?? "") + (p.delta ?? ""); st.hypStreaming = true; });
-    case "reasoning_end": return upStep(p.stepId, st => { st.hypStreaming = false; });
+    // STREAMING: accumulate the model's live prose per step — round-1 hypothesis
+    // and the round-2 verdict weighing stream into separate slots
+    case "reasoning_delta": return upStep(p.stepId, st => {
+      if (p.kind === "verdict") { st.verdictStatement = (st.verdictStatement ?? "") + (p.delta ?? ""); st.verdictStreaming = true; }
+      else { st.hypothesis = (st.hypothesis ?? "") + (p.delta ?? ""); st.hypStreaming = true; }
+    });
+    case "reasoning_end": return upStep(p.stepId, st => { if (p.kind === "verdict") st.verdictStreaming = false; else st.hypStreaming = false; });
     case "retrieval": return upStep(p.stepId, st => { st.retrievals = [...st.retrievals, { model: p.model, candidates: p.candidates, query: p.query, followup: p.followup, surfaced: p.surfaced ?? [] }]; });
-    case "reasoning_verdict": return { ...upStep(p.stepId, st => { st.verdict = p.verdict; st.verdictStatement = p.statement; }), _lastVerdictStep: p.stepId };
+    case "reasoning_verdict": return { ...upStep(p.stepId, st => { st.verdict = p.verdict; st.verdictStatement = p.statement; st.verdictStreaming = false; }), _lastVerdictStep: p.stepId };
     case "nemotron_panel": return upStep(p.stepId, st => { st.panel = { ...st.panel, reviewing: p.reviewing ?? (p.done ? false : st.panel?.reviewing), done: p.done ?? st.panel?.done, upheld: p.upheld ?? st.panel?.upheld, votes: p.votes ?? st.panel?.votes, summary: p.summary ?? st.panel?.summary, finding: p.finding ?? st.panel?.finding, lenses: p.lenses ?? st.panel?.lenses, model: p.model ?? st.panel?.model }; });
-    // cleared/unproven are emitted synchronously right after their reasoning_verdict → stamp the same step
-    case "cleared": return stampStep({ ...s, cleared: [...s.cleared, { anomaly: p.anomaly, why: p.why }] }, s._lastVerdictStep, st => { st.resolution = { kind: "cleared", why: p.why }; });
-    case "unproven": return stampStep({ ...s, unproven: [...s.unproven, { anomaly: p.anomaly }] }, s._lastVerdictStep, st => { st.resolution = { kind: "unproven" }; });
+    // cleared/unproven carry their stepId (investigations run concurrently);
+    // _lastVerdictStep remains as a fallback for older event logs
+    case "cleared": return stampStep({ ...s, cleared: [...s.cleared, { anomaly: p.anomaly, why: p.why }] }, p.stepId ?? s._lastVerdictStep, st => { st.resolution = { kind: "cleared", why: p.why }; });
+    case "unproven": return stampStep({ ...s, unproven: [...s.unproven, { anomaly: p.anomaly, why: p.why }] }, p.stepId ?? s._lastVerdictStep, st => { st.resolution = { kind: "unproven", why: p.why }; });
     // a finding links to its step via the panel's finding id
     case "finding": { const s2 = { ...s, findings: [...s.findings, p.finding] }; const step = s2.steps.find(x => x.panel?.finding === p.finding?.id); return step ? stampStep(s2, step.stepId, st => { st.resolution = { kind: "confirmed", findingId: p.finding.id }; }) : s2; }
     case "freeze_request": return s.freezes.some(f => f.target === p.target) ? s : { ...s, freezes: [...s.freezes, { target: p.target }] };

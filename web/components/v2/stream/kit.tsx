@@ -17,12 +17,13 @@ export const SCHEME_LABEL: Record<string, string> = {
 
 export const fmt = (n?: number) => (n ?? 0).toLocaleString("en-US");
 
-/** Neutral, professional step glyphs — a real enterprise agent never names its stack. */
+/** Step glyphs in the stack's brand hues — Vultr blue for retrieval,
+ *  NVIDIA green for the Nemotron fleet + review panel. */
 export function VultrFavicon({ size = 16 }: { size?: number }) {
   return <MagnifyingGlass size={size} weight="bold" style={{ color: "#0B69C7", display: "block" }} />;
 }
 export function NvidiaFavicon({ size = 16 }: { size?: number }) {
-  return <ShieldCheck size={size} weight="duotone" style={{ color: "#111111", display: "block" }} />;
+  return <ShieldCheck size={size} weight="fill" style={{ color: "#76B900", display: "block" }} />;
 }
 
 /** A white-framed brand chip (favicon inside a hairline square). */
