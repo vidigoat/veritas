@@ -6,13 +6,16 @@
 
 ### The AI Forensic Auditor
 
-**Companies lose 5% of revenue to fraud. Audits catch 3% of it.**
-**VERITAS reads 100% of the books — and files a cited fraud examination in ~90 seconds, for a cent.**
+**Occupational fraud costs the world $5 trillion a year (ACFE) — 5% of every company's revenue.**
+**External audits catch 3% of it. VERITAS reads 100% of the books — and files a cited fraud
+examination in ~90 seconds, for a cent.**
 
 A chat-native enterprise agent that plans a forensic examination, retrieves evidence with
 **VultronRetriever** (twice per lead — the second time with a query the model writes itself),
 weighs both rounds with **Qwen on Vultr Serverless Inference**, and files an accusation **only
 when a second model family — an independent NVIDIA Nemotron panel — agrees.**
+
+**▶ Demo video:** **https://www.youtube.com/watch?v=xnTSWUwE0qA** (75 seconds)
 
 **Live demo:** **https://veritas.144-202-6-174.sslip.io** — attach a folder of a company's books,
 ask *"audit my company, please,"* and watch a genuine examination of 1,090 documents run on Vultr,
@@ -33,6 +36,22 @@ document — 1,090 documents examined in 67 seconds for $0.012 of inference.</su
 </div>
 
 ---
+
+## For the judges — fastest path & track checklist
+
+**60-second route:** [watch the video](https://www.youtube.com/watch?v=xnTSWUwE0qA) → open the
+[live demo](https://veritas.144-202-6-174.sslip.io) and upload any folder of books (or run it
+locally — four commands, below) → read [the filing rule](#no-accusation-on-one-model-familys-say-so).
+
+| Track requirement | Where VERITAS meets it |
+|---|---|
+| **Agent, not retrieve-then-answer** | Plans per-corpus → retrieves **twice per lead** (the second with a query the model writes itself) → streams a verdict over both rounds → a second model family must agree before filing. All visible on screen. |
+| **VultronRetriever for document retrieval** | Load-bearing everywhere evidence moves: Core-4.5B ranks the first pass, Prime-8B takes the decisive follow-up, and every interrogation question triggers a fresh rerank (`server/src/retriever.ts`) |
+| **All core reasoning on Vultr Serverless Inference** | Qwen3.6 examiner + NVIDIA Nemotron fleet & review panel — `server/src/llm.ts` is one page and names no other provider. (VultronRetriever models are rerankers by design — they decide what evidence every verdict sees; the Vultr-served LLMs do the deciding.) |
+| **Backend deployed on Vultr** | One Vultr Cloud Compute VM serves the engine and the console ([DEPLOY.md](DEPLOY.md)) |
+| **Public demo URL + video + docs** | Links above; setup steps below; architecture + workflow throughout this file |
+| **Messy real-world documents** | 1,090 mixed documents (invoices, bank statements, payroll, HR, board minutes, credit notes) — plus a second company in another currency |
+| **Built during the event** | Every commit is timestamped inside the hacking window — the history is the record |
 
 ## The problem
 
