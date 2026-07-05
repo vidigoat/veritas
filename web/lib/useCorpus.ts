@@ -134,38 +134,16 @@ export function useCorpus() {
     caseId.current = r.caseId; return { caseId: r.caseId, total: r.total };
   }, []);
 
-  // replay the bundled recording — zero backend dependency (public demo fallback)
-  const runReplay = useCallback(async () => {
-    const events: any[] = await fetch("/demo-v2.json").then(r => r.json()).catch(() => null);
-    if (!events?.length) { dispatch({ type: "error", payload: { message: "The engine is unreachable and no recording is bundled. Start the server and retry." } } as any); return false; }
-    dispatch({ type: "__replay", payload: {} } as any);
-    caseId.current = "demo";
-    const t0 = events[0]?.ts ?? 0; const start = Date.now(); const speed = 1.6;
-    let i = 0;
-    const tick = () => {
-      const now = (Date.now() - start) * speed;
-      while (i < events.length && (events[i].ts - t0) <= now) dispatch(events[i++]);
-      if (i < events.length) setTimeout(tick, 90);
-    };
-    tick();
-    return true;
-  }, []);
-
-  const runLive = useCallback(async (cid?: string) => {
-    const usedUpload = !!(cid ?? caseId.current);
-    const r = await fetch(`${API}/api/v2/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseId: cid ?? caseId.current }) }).then(r => r.json()).catch(() => null);
+  const runLive = useCallback(async (cid?: string, brief?: string) => {
+    const r = await fetch(`${API}/api/v2/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseId: cid ?? caseId.current, brief }) }).then(r => r.json()).catch(() => null);
     if (!r?.caseId) {
-      // the engine answered with a real error (capacity/limit) → say so, honestly
-      if (r?.error) { dispatch({ type: "error", payload: { message: r.error } } as any); return; }
-      // network-dead + the user's OWN books: replaying another company's recording would lie
-      if (usedUpload) { dispatch({ type: "error", payload: { message: "The engine is unreachable, so your uploaded books can't be examined right now." } } as any); return; }
-      await runReplay();  // demo path only: engine down → replay the recording
+      dispatch({ type: "error", payload: { message: r?.error || "The engine is unreachable — your books can't be examined right now. Try again in a moment." } } as any);
       return;
     }
     caseId.current = r.caseId;
     try { sessionStorage.setItem("veritas-case", r.caseId); } catch {}
     consume(`${API}/api/v2/run/${r.caseId}/events`);
-  }, [consume, runReplay]);
+  }, [consume]);
 
   // refresh-proof: if a run was in flight, reattach to its event log (server replays from 0)
   const resume = useCallback(async (): Promise<boolean> => {
@@ -223,5 +201,5 @@ export function useCorpus() {
     else dispatch({ type: "action_failed", payload: { target } } as any);
   }, []);
 
-  return { state, upload, runLive, runReplay, resume, ask, openDoc, approve, caseId };
+  return { state, upload, runLive, resume, ask, openDoc, approve, caseId };
 }

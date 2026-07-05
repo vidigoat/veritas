@@ -14,9 +14,9 @@ A chat-native enterprise agent that plans a forensic examination, retrieves evid
 follow-up query to kill the innocent explanation), reasons with **Qwen on Vultr Serverless
 Inference**, and submits every finding to an independent **NVIDIA Nemotron** panel before filing.
 
-**Live demo:** `http://144.202.6.174:8787` · one click — *"Examine the demo company"* — runs a
-genuine examination of 1,090 documents on Vultr, live. If the engine is ever unreachable, the
-console automatically replays a recording of a real run, so the demo cannot die.
+**Live demo:** **https://veritas.144-202-6-174.sslip.io** — attach a folder of a company's books,
+ask *"audit my company, please,"* and watch a genuine examination of 1,090 documents run on Vultr,
+live. Nothing is scripted — upload your own books and it reads those; on clean books it files nothing.
 
 [The 45-second story](#the-45-second-story) · [Why it's an agent](#why-its-an-agent-not-a-pipeline) ·
 [Built on Vultr](#built-entirely-on-vultr) · [Can't cry wolf](#why-it-cant-cry-wolf) · [Run it](#run-it-locally)
@@ -48,7 +48,7 @@ company. The proof is *in* the books — spread across documents no one reads si
 
 ## The 45-second story
 
-Upload a folder of a company's books — or click **"Examine the demo company"**. On the demo
+Attach a folder of a company's books and ask *"audit my company, please."* On the demo
 books (1,090 documents: 911 invoices, bank statements, payroll registers, HR records, vendor
 registrations, board minutes, credit notes — messy, realistic, euro-denominated):
 
@@ -183,7 +183,7 @@ pnpm --filter @veritas/datagen corpus                 # build the 1,090-doc demo
 cp .env.example .env                                  # add your Vultr inference key
 pnpm --filter @veritas/server start &                 # forensic engine on :8787
 pnpm --filter @veritas/web dev                        # chat console on :3000
-# open http://localhost:3000 → "Examine the demo company"
+# open http://localhost:3000 → attach datagen/data/out/corpus and ask "audit my company, please"
 pnpm test                                             # offline correctness suite
 pnpm --filter @veritas/evals v2                       # full live eval: scheme + clean books
 ```

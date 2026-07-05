@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "run-all": "tsx src/run-all.ts",
-    "one": "tsx src/run-one.ts",
-    "v2": "tsx src/run-v2.ts"
+    "v2": "tsx src/run-v2.ts",
+    "eval": "tsx src/run-v2.ts"
   },
   "dependencies": {
     "@veritas/shared": "workspace:*"
