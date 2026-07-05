@@ -7,7 +7,7 @@
 ### The AI Forensic Auditor
 
 **Companies lose 5% of revenue to fraud. Audits catch 3% of it.**
-**VERITAS reads 100% of the books — and files a cited fraud examination in about a minute, for a cent.**
+**VERITAS reads 100% of the books — and files a cited fraud examination in ~90 seconds, for a cent.**
 
 A chat-native enterprise agent that plans a forensic examination, retrieves evidence with
 **VultronRetriever** (twice per lead — the second time with a query the model writes itself),
@@ -64,7 +64,7 @@ registrations, board minutes, credit notes — messy, realistic, euro-denominate
    and if the panel refuses to uphold, **the finding is not filed.**
 6. **Verdict: €635,400 at risk** — a shell company (€332,000), a ghost employee (€216,000),
    a duplicate payment (€87,400) — and the red-herring duplicate that a credit note reversed
-   is **cleared, not filed**. The whole run: **~60–90 seconds, ~$0.01 of inference.**
+   is **cleared, not filed**. The whole run: **~60–100 seconds, ~$0.01 of inference.**
 
 Then you interrogate it — *"how do you know it's a shell?"* — and it re-reads the books with
 VultronRetriever, live, and answers with citations you can click open.
